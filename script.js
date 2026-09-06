@@ -1,39 +1,42 @@
-// =====================================================
+// ======================================================
 // CẤU HÌNH
-// =====================================================
-
-// Google Sheets xuất dữ liệu dạng CSV
-
-const SHEET_URL =
-    "https://docs.google.com/spreadsheets/d/" +
-    "1Y_1yX00pbMFD416BXNSe2ClxGGGUK2kdps93Pz7Agh4/" +
-    "export?format=csv&gid=0";
+// ======================================================
 
 
-// Google Apps Script
+// URL GOOGLE APPS SCRIPT
 
 const SCRIPT_URL =
-    "https://script.google.com/macros/s/" +
-    "AKfycbw5JwJ9Kil9T9ul12UqJ8mXen4l0Exdq4HJaHDK7ZEKdRYy58cBoyEBd9-ynVZo1somoA/" +
-    "exec";
+    "https://script.google.com/macros/s/AKfycbw5JwJ9Kil9T9ul12UqJ8mXen4l0Exdq4HJaHDK7ZEKdRYy58cBoyEBd9-ynVZo1somoA/exec";
 
 
-// =====================================================
-// BIẾN LƯU DỮ LIỆU
-// =====================================================
+// URL GOOGLE SHEETS DẠNG CSV
 
-let latestData = null;
+const SHEET_URL =
+    "https://docs.google.com/spreadsheets/d/1Y_1yX00pbMFD416BXNSe2ClxGGGUK2kdps93Pz7Agh4/export?format=csv&gid=0";
 
 
-// =====================================================
-// CHUYỂN GIÁ TRỊ SANG SỐ
-// =====================================================
+// ======================================================
+// BIẾN LƯU BIỂU ĐỒ
+// ======================================================
 
-function parseNumber(value) {
+
+let co2Chart = null;
+
+let pm25Chart = null;
+
+let peopleChart = null;
+
+
+// ======================================================
+// HÀM CHUYỂN DỮ LIỆU SANG SỐ
+// ======================================================
+
+
+function toNumber(value) {
 
     if (
-        value === null ||
         value === undefined ||
+        value === null ||
         value === ""
     ) {
 
@@ -42,53 +45,21 @@ function parseNumber(value) {
     }
 
 
-    let text = String(value)
-        .trim()
-        .replace(/"/g, "")
-        .replace(",", ".");
+    return Number(
 
+        String(value)
+            .replace(",", ".")
+            .trim()
 
-    const number = Number(text);
-
-
-    if (isNaN(number)) {
-
-        return 0;
-
-    }
-
-
-    return number;
+    );
 
 }
 
 
-// =====================================================
-// LÀM SẠCH TÊN CỘT
-// =====================================================
+// ======================================================
+// HÀM ĐỌC CSV
+// ======================================================
 
-function normalizeHeader(header) {
-
-    return String(header)
-
-        .trim()
-
-        .replace(/^\uFEFF/, "")
-
-        .toLowerCase()
-
-        .normalize("NFD")
-
-        .replace(/[\u0300-\u036f]/g, "")
-
-        .replace(/\s+/g, "_");
-
-}
-
-
-// =====================================================
-// CHUYỂN CSV THÀNH DỮ LIỆU
-// =====================================================
 
 function parseCSV(csvText) {
 
@@ -105,23 +76,27 @@ function parseCSV(csvText) {
     }
 
 
-    // ================================================
+    // ----------------------------------------------
     // ĐỌC HEADER
-    // ================================================
+    // ----------------------------------------------
 
     const headers =
-        splitCSVLine(lines[0])
+        lines[0]
+            .split(",")
             .map(
-                normalizeHeader
+                header =>
+                    header
+                        .trim()
+                        .replace(/"/g, "")
             );
 
 
+    // ----------------------------------------------
+    // TẠO MẢNG DỮ LIỆU
+    // ----------------------------------------------
+
     const data = [];
 
-
-    // ================================================
-    // ĐỌC TỪNG DÒNG
-    // ================================================
 
     for (
         let i = 1;
@@ -129,20 +104,19 @@ function parseCSV(csvText) {
         i++
     ) {
 
-        const line =
-            lines[i]
-                .trim();
+        const values =
+            parseCSVLine(
+                lines[i]
+            );
 
 
-        if (!line) {
+        if (
+            values.length === 0
+        ) {
 
             continue;
 
         }
-
-
-        const values =
-            splitCSVLine(line);
 
 
         const row = {};
@@ -150,7 +124,10 @@ function parseCSV(csvText) {
 
         headers.forEach(
 
-            function (header, index) {
+            (
+                header,
+                index
+            ) => {
 
                 row[header] =
                     values[index] !== undefined
@@ -172,12 +149,14 @@ function parseCSV(csvText) {
 }
 
 
-// =====================================================
-// TÁCH DÒNG CSV
-// HỖ TRỢ DỮ LIỆU CÓ DẤU NHÁY
-// =====================================================
+// ======================================================
+// HÀM ĐỌC MỘT DÒNG CSV
+//
+// HỖ TRỢ DỮ LIỆU CÓ DẤU PHẨY
+// ======================================================
 
-function splitCSVLine(line) {
+
+function parseCSVLine(line) {
 
     const result = [];
 
@@ -196,37 +175,37 @@ function splitCSVLine(line) {
             line[i];
 
 
-        // ============================================
-        // XỬ LÝ DẤU NHÁY
-        // ============================================
-
-        if (character === '"') {
+        if (
+            character === '"'
+        ) {
 
             insideQuotes =
                 !insideQuotes;
 
-
-            continue;
-
         }
 
 
-        // ============================================
-        // XỬ LÝ DẤU PHẨY
-        // ============================================
+        else if (
 
-        if (
             character === "," &&
+
             !insideQuotes
+
         ) {
 
             result.push(
-                current.trim()
+
+                current
+                    .trim()
+                    .replace(/"/g, "")
+
             );
+
 
             current = "";
 
         }
+
 
         else {
 
@@ -237,10 +216,12 @@ function splitCSVLine(line) {
     }
 
 
-    // Thêm giá trị cuối cùng
-
     result.push(
-        current.trim()
+
+        current
+            .trim()
+            .replace(/"/g, "")
+
     );
 
 
@@ -249,29 +230,34 @@ function splitCSVLine(line) {
 }
 
 
-// =====================================================
-// LẤY GIÁ TRỊ THEO NHIỀU TÊN CỘT CÓ THỂ CÓ
-// =====================================================
+// ======================================================
+// HÀM TÌM GIÁ TRỊ THEO NHIỀU TÊN CỘT
+// ======================================================
 
-function getValue(row, possibleNames) {
+
+function getValue(
+
+    row,
+    possibleNames
+
+) {
 
     for (
-        const name of possibleNames
+
+        const name
+        of possibleNames
+
     ) {
 
-        const normalizedName =
-            normalizeHeader(name);
-
-
         if (
-            row.hasOwnProperty(
-                normalizedName
-            )
+
+            row[name] !== undefined &&
+
+            row[name] !== ""
+
         ) {
 
-            return row[
-                normalizedName
-            ];
+            return row[name];
 
         }
 
@@ -283,172 +269,42 @@ function getValue(row, possibleNames) {
 }
 
 
-// =====================================================
-// CHUYỂN DÒNG DỮ LIỆU THÀNH DỮ LIỆU CẢM BIẾN
-// =====================================================
+// ======================================================
+// TẢI DỮ LIỆU GOOGLE SHEETS
+// ======================================================
 
-function convertRowToSensorData(row) {
-
-    // ================================================
-    // THỜI GIAN
-    // ================================================
-
-    const time =
-        getValue(
-            row,
-            [
-                "Thoi_gian",
-                "Thời gian",
-                "Timestamp",
-                "Time"
-            ]
-        );
-
-
-    // ================================================
-    // NHIỆT ĐỘ
-    // ================================================
-
-    const temperature =
-        parseNumber(
-
-            getValue(
-                row,
-                [
-                    "Nhiet_do",
-                    "Nhiệt độ",
-                    "Temperature"
-                ]
-            )
-
-        );
-
-
-    // ================================================
-    // ĐỘ ẨM
-    // ================================================
-
-    const humidity =
-        parseNumber(
-
-            getValue(
-                row,
-                [
-                    "Do_am",
-                    "Độ ẩm",
-                    "Humidity"
-                ]
-            )
-
-        );
-
-
-    // ================================================
-    // CO2
-    // ================================================
-
-    const co2 =
-        parseNumber(
-
-            getValue(
-                row,
-                [
-                    "CO2",
-                    "CO₂",
-                    "Co2"
-                ]
-            )
-
-        );
-
-
-    // ================================================
-    // PM2.5
-    // ================================================
-
-    const pm25 =
-        parseNumber(
-
-            getValue(
-                row,
-                [
-                    "PM2.5",
-                    "PM25",
-                    "Pm2.5",
-                    "Pm25"
-                ]
-            )
-
-        );
-
-
-    // ================================================
-    // SỐ NGƯỜI
-    // ================================================
-
-    const people =
-        parseNumber(
-
-            getValue(
-                row,
-                [
-                    "So_nguoi",
-                    "Số người",
-                    "People"
-                ]
-            )
-
-        );
-
-
-    return {
-
-        time: time,
-
-        temperature: temperature,
-
-        humidity: humidity,
-
-        co2: co2,
-
-        pm25: pm25,
-
-        people: people
-
-    };
-
-}
-
-
-// =====================================================
-// TẢI DỮ LIỆU TỪ GOOGLE SHEETS
-// =====================================================
 
 async function loadData() {
 
     try {
 
         console.log(
+
             "Đang tải dữ liệu..."
+
         );
 
 
-        // Thêm thời gian để tránh cache
-
-        const url =
-            SHEET_URL +
-            "&t=" +
-            new Date().getTime();
-
-
         const response =
-            await fetch(url);
+            await fetch(
+
+                SHEET_URL +
+                "&t=" +
+                Date.now()
+
+            );
 
 
-        if (!response.ok) {
+        if (
+
+            !response.ok
+
+        ) {
 
             throw new Error(
+
                 "Không thể tải Google Sheets"
+
             );
 
         }
@@ -458,350 +314,1283 @@ async function loadData() {
             await response.text();
 
 
-        console.log(
-            "CSV nhận được:"
-        );
-
-        console.log(
-            csvText.substring(0, 1000)
-        );
-
-
-        // ============================================
-        // PHÂN TÍCH CSV
-        // ============================================
-
-        const rows =
+        const rawData =
             parseCSV(csvText);
 
 
+        console.log(
+
+            "Số dòng dữ liệu:",
+
+            rawData.length
+
+        );
+
+
+        // ----------------------------------------------
+        // XÓA DÒNG TEST
+        // ----------------------------------------------
+
+        const cleanData =
+            rawData.filter(
+
+                row => {
+
+                    const co2Value =
+                        getValue(
+
+                            row,
+
+                            [
+                                "CO2",
+                                "co2"
+                            ]
+
+                        );
+
+
+                    return (
+
+                        String(co2Value)
+                            .toUpperCase()
+
+                        !==
+
+                        "TEST"
+
+                    );
+
+                }
+
+            );
+
+
         if (
-            rows.length === 0
+
+            cleanData.length === 0
+
         ) {
 
             throw new Error(
-                "Google Sheets chưa có dữ liệu"
+
+                "Không có dữ liệu hợp lệ"
+
             );
 
         }
 
 
-        // ============================================
-        // IN TÊN CỘT RA CONSOLE
-        // ============================================
+        // ----------------------------------------------
+        // LẤY DÒNG MỚI NHẤT
+        // ----------------------------------------------
 
-        console.log(
-            "Tên cột:"
-        );
-
-        console.log(
-            Object.keys(rows[0])
-        );
-
-
-        // ============================================
-        // LẤY DÒNG DỮ LIỆU MỚI NHẤT
-        // ============================================
-
-        const lastRow =
-            rows[
-                rows.length - 1
+        const latest =
+            cleanData[
+                cleanData.length - 1
             ];
 
 
-        console.log(
-            "Dòng mới nhất:"
-        );
+        // ----------------------------------------------
+        // LẤY THỜI GIAN
+        // ----------------------------------------------
 
-        console.log(
-            lastRow
-        );
+        const time =
+            getValue(
 
+                latest,
 
-        // ============================================
-        // CHUYỂN ĐỔI DỮ LIỆU
-        // ============================================
+                [
+                    "Thoi_gian",
+                    "Thời_gian",
+                    "Timestamp"
+                ]
 
-        latestData =
-            convertRowToSensorData(
-                lastRow
             );
 
 
-        console.log(
-            "Dữ liệu đã xử lý:"
+        // ----------------------------------------------
+        // LẤY NHIỆT ĐỘ
+        // ----------------------------------------------
+
+        const temperature =
+            toNumber(
+
+                getValue(
+
+                    latest,
+
+                    [
+                        "Nhiet_do",
+                        "Nhiệt_độ",
+                        "nhiet_do"
+                    ]
+
+                )
+
+            );
+
+
+        // ----------------------------------------------
+        // LẤY ĐỘ ẨM
+        // ----------------------------------------------
+
+        const humidity =
+            toNumber(
+
+                getValue(
+
+                    latest,
+
+                    [
+                        "Do_am",
+                        "Độ_ẩm",
+                        "do_am"
+                    ]
+
+                )
+
+            );
+
+
+        // ----------------------------------------------
+        // LẤY CO2
+        // ----------------------------------------------
+
+        const co2 =
+            toNumber(
+
+                getValue(
+
+                    latest,
+
+                    [
+                        "CO2",
+                        "co2"
+                    ]
+
+                )
+
+            );
+
+
+        // ----------------------------------------------
+        // LẤY PM2.5
+        // ----------------------------------------------
+
+        const pm25 =
+            toNumber(
+
+                getValue(
+
+                    latest,
+
+                    [
+                        "PM2.5",
+                        "PM25",
+                        "pm25",
+                        "PM2_5"
+                    ]
+
+                )
+
+            );
+
+
+        // ----------------------------------------------
+        // LẤY SỐ NGƯỜI
+        // ----------------------------------------------
+
+        const people =
+            toNumber(
+
+                getValue(
+
+                    latest,
+
+                    [
+                        "So_nguoi",
+                        "Số_người",
+                        "so_nguoi"
+                    ]
+
+                )
+
+            );
+
+
+        // ----------------------------------------------
+        // HIỂN THỊ DASHBOARD
+        // ----------------------------------------------
+
+        document
+            .getElementById(
+                "temperature"
+            )
+            .textContent =
+                temperature.toFixed(1);
+
+
+        document
+            .getElementById(
+                "humidity"
+            )
+            .textContent =
+                humidity.toFixed(1);
+
+
+        document
+            .getElementById(
+                "co2"
+            )
+            .textContent =
+                Math.round(co2);
+
+
+        document
+            .getElementById(
+                "pm25"
+            )
+            .textContent =
+                pm25.toFixed(1);
+
+
+        document
+            .getElementById(
+                "people"
+            )
+            .textContent =
+                Math.round(people);
+
+
+        document
+            .getElementById(
+                "peopleInput"
+            )
+            .value =
+                Math.round(people);
+
+
+        document
+            .getElementById(
+                "lastUpdate"
+            )
+            .textContent =
+                time;
+
+
+        // ----------------------------------------------
+        // CẬP NHẬT TRẠNG THÁI KHÔNG KHÍ
+        // ----------------------------------------------
+
+        updateAirStatus(
+
+            co2,
+
+            pm25,
+
+            people
+
         );
 
-        console.log(
-            latestData
+
+        // ----------------------------------------------
+        // CẬP NHẬT BIỂU ĐỒ
+        // ----------------------------------------------
+
+        createCharts(
+
+            cleanData
+
         );
 
 
-        // ============================================
-        // HIỂN THỊ
-        // ============================================
-
-        updateDashboard();
-
-
-    }
-
-    catch (error) {
+    } catch (error) {
 
         console.error(
-            "Lỗi tải dữ liệu:",
+
             error
+
         );
 
 
-        document.getElementById(
-            "lastUpdate"
-        ).textContent =
-            "Không thể tải dữ liệu";
+        document
+            .getElementById(
+                "lastUpdate"
+            )
+            .textContent =
+                "Lỗi tải dữ liệu";
+
+
+        document
+            .getElementById(
+                "airStatus"
+            )
+            .textContent =
+                "❌ Không thể tải dữ liệu";
+
 
     }
 
 }
 
 
-// =====================================================
-// CẬP NHẬT DASHBOARD
-// =====================================================
-
-function updateDashboard() {
-
-    if (!latestData) {
-
-        return;
-
-    }
-
-
-    // ================================================
-    // HIỂN THỊ THỜI GIAN
-    // ================================================
-
-    document.getElementById(
-        "lastUpdate"
-    ).textContent =
-        latestData.time ||
-        new Date()
-            .toLocaleString(
-                "vi-VN"
-            );
-
-
-    // ================================================
-    // NHIỆT ĐỘ
-    // ================================================
-
-    document.getElementById(
-        "temperature"
-    ).textContent =
-        latestData.temperature
-            .toFixed(1);
-
-
-    // ================================================
-    // ĐỘ ẨM
-    // ================================================
-
-    document.getElementById(
-        "humidity"
-    ).textContent =
-        latestData.humidity
-            .toFixed(1);
-
-
-    // ================================================
-    // CO2
-    // ================================================
-
-    document.getElementById(
-        "co2"
-    ).textContent =
-        latestData.co2
-            .toFixed(0);
-
-
-    // ================================================
-    // PM2.5
-    // ================================================
-
-    document.getElementById(
-        "pm25"
-    ).textContent =
-        latestData.pm25
-            .toFixed(1);
-
-
-    // ================================================
-    // SỐ NGƯỜI
-    // ================================================
-
-    document.getElementById(
-        "people"
-    ).textContent =
-        latestData.people
-            .toFixed(0);
-
-
-    // ================================================
-    // CẬP NHẬT Ô HIỆU CHỈNH SỐ NGƯỜI
-    // ================================================
-
-    const peopleInput =
-        document.getElementById(
-            "peopleInput"
-        );
-
-
-    if (peopleInput) {
-
-        peopleInput.value =
-            latestData.people
-                .toFixed(0);
-
-    }
-
-
-    // ================================================
-    // CẬP NHẬT TRẠNG THÁI KHÔNG KHÍ
-    // ================================================
-
-    updateAirStatus();
-
-}
-
-
-// =====================================================
+// ======================================================
 // ĐÁNH GIÁ CHẤT LƯỢNG KHÔNG KHÍ
-// =====================================================
+// ======================================================
 
-function updateAirStatus() {
 
-    const airStatus =
+function updateAirStatus(
+
+    co2,
+
+    pm25,
+
+    people
+
+) {
+
+    const statusElement =
         document.getElementById(
             "airStatus"
         );
 
 
-    if (!airStatus) {
-
-        return;
-
-    }
+    let status = "";
 
 
-    // ================================================
+
+    // ----------------------------------------------
     // MỨC NGUY HIỂM
-    // ================================================
+    // ----------------------------------------------
 
     if (
 
-        latestData.co2 >= 1000 ||
+        co2 >= 1000 ||
 
-        latestData.pm25 >= 35
+        pm25 >= 12
 
     ) {
 
-        airStatus.innerHTML =
-            "🔴 NGUY HIỂM: Chất lượng không khí kém";
+        status =
+            "🔴 CẢNH BÁO: Chất lượng không khí cần được chú ý!";
 
-        airStatus.className =
-            "air-status danger";
-
-
-        return;
 
     }
 
 
-    // ================================================
+    // ----------------------------------------------
     // MỨC CẦN CHÚ Ý
-    // ================================================
+    // ----------------------------------------------
 
-    if (
+    else if (
 
-        latestData.co2 >= 800 ||
-
-        latestData.pm25 >= 12
+        co2 >= 800
 
     ) {
 
-        airStatus.innerHTML =
-            "🟡 CẦN CHÚ Ý: Chất lượng không khí đang tăng";
+        status =
+            "🟡 CẦN CHÚ Ý: Nồng độ CO₂ đang tăng.";
 
-        airStatus.className =
-            "air-status warning";
-
-
-        return;
 
     }
 
 
-    // ================================================
+    // ----------------------------------------------
+    // PHÒNG ĐÔNG NGƯỜI
+    // ----------------------------------------------
+
+    else if (
+
+        people >= 20
+
+    ) {
+
+        status =
+            "🟠 PHÒNG ĐÔNG NGƯỜI: Cần theo dõi chất lượng không khí.";
+
+
+    }
+
+
+    // ----------------------------------------------
     // BÌNH THƯỜNG
-    // ================================================
+    // ----------------------------------------------
 
-    airStatus.innerHTML =
-        "🟢 BÌNH THƯỜNG: Chất lượng không khí tốt";
+    else {
 
-    airStatus.className =
-        "air-status normal";
+        status =
+            "🟢 CHẤT LƯỢNG KHÔNG KHÍ BÌNH THƯỜNG";
+
+    }
+
+
+    statusElement.textContent =
+        status;
 
 }
 
 
-// =====================================================
-// GỬI DỮ LIỆU POST ĐẾN GOOGLE APPS SCRIPT
-// =====================================================
+// ======================================================
+// CHUẨN BỊ DỮ LIỆU BIỂU ĐỒ
+// ======================================================
 
-async function sendCommand(data) {
 
-    const response =
-        await fetch(
+function prepareChartData(
 
-            SCRIPT_URL,
+    data
 
-            {
+) {
 
-                method: "POST",
+    // Chỉ lấy tối đa 200 mẫu mới nhất
 
-                headers: {
+    let chartData =
+        data.slice(-200);
 
-                    "Content-Type":
-                        "text/plain;charset=utf-8"
 
-                },
+    const labels = [];
 
-                body:
-                    JSON.stringify(data)
+    const co2Data = [];
 
-            }
+    const pm25Data = [];
+
+    const peopleData = [];
+
+
+    chartData.forEach(
+
+        row => {
+
+
+            // ------------------------------------------
+            // THỜI GIAN
+            // ------------------------------------------
+
+            const time =
+                getValue(
+
+                    row,
+
+                    [
+                        "Thoi_gian",
+                        "Thời_gian",
+                        "Timestamp"
+                    ]
+
+                );
+
+
+            // ------------------------------------------
+            // CO2
+            // ------------------------------------------
+
+            const co2 =
+                toNumber(
+
+                    getValue(
+
+                        row,
+
+                        [
+                            "CO2",
+                            "co2"
+                        ]
+
+                    )
+
+                );
+
+
+            // ------------------------------------------
+            // PM2.5
+            // ------------------------------------------
+
+            const pm25 =
+                toNumber(
+
+                    getValue(
+
+                        row,
+
+                        [
+                            "PM2.5",
+                            "PM25",
+                            "pm25",
+                            "PM2_5"
+                        ]
+
+                    )
+
+                );
+
+
+            // ------------------------------------------
+            // SỐ NGƯỜI
+            // ------------------------------------------
+
+            const people =
+                toNumber(
+
+                    getValue(
+
+                        row,
+
+                        [
+                            "So_nguoi",
+                            "Số_người",
+                            "so_nguoi"
+                        ]
+
+                    )
+
+                );
+
+
+            // ------------------------------------------
+            // THÊM DỮ LIỆU
+            // ------------------------------------------
+
+            labels.push(
+
+                time
+
+            );
+
+
+            co2Data.push(
+
+                co2
+
+            );
+
+
+            pm25Data.push(
+
+                pm25
+
+            );
+
+
+            peopleData.push(
+
+                people
+
+            );
+
+
+        }
+
+    );
+
+
+    return {
+
+        labels:
+
+            labels,
+
+
+        co2:
+
+            co2Data,
+
+
+        pm25:
+
+            pm25Data,
+
+
+        people:
+
+            peopleData
+
+    };
+
+}
+
+
+// ======================================================
+// TẠO BIỂU ĐỒ
+// ======================================================
+
+
+function createCharts(
+
+    rawData
+
+) {
+
+    const data =
+        prepareChartData(
+
+            rawData
 
         );
 
 
-    const result =
-        await response.text();
+    // ----------------------------------------------
+    // XÓA BIỂU ĐỒ CŨ
+    // ----------------------------------------------
+
+    if (
+
+        co2Chart
+
+    ) {
+
+        co2Chart.destroy();
+
+    }
 
 
-    console.log(
-        "Server response:",
-        result
-    );
+    if (
+
+        pm25Chart
+
+    ) {
+
+        pm25Chart.destroy();
+
+    }
 
 
-    return result;
+    if (
+
+        peopleChart
+
+    ) {
+
+        peopleChart.destroy();
+
+    }
+
+
+    // ==================================================
+    // BIỂU ĐỒ CO2
+    // ==================================================
+
+    const co2Canvas =
+        document.getElementById(
+            "co2Chart"
+        );
+
+
+    if (
+
+        co2Canvas
+
+    ) {
+
+        co2Chart =
+            new Chart(
+
+                co2Canvas,
+
+                {
+
+                    type:
+
+                        "line",
+
+
+                    data:
+
+                        {
+
+                            labels:
+
+                                data.labels,
+
+
+                            datasets:
+
+                                [
+
+                                    {
+
+                                        label:
+
+                                            "CO₂ (ppm)",
+
+
+                                        data:
+
+                                            data.co2,
+
+
+                                        borderWidth:
+
+                                            2,
+
+
+                                        tension:
+
+                                            0.3,
+
+
+                                        pointRadius:
+
+                                            2
+
+
+                                    },
+
+
+                                    {
+
+                                        label:
+
+                                            "Ngưỡng chú ý (800 ppm)",
+
+
+                                        data:
+
+                                            data.labels.map(
+
+                                                () => 800
+
+                                            ),
+
+
+                                        borderDash:
+
+                                            [5, 5],
+
+
+                                        borderWidth:
+
+                                            1,
+
+
+                                        pointRadius:
+
+                                            0
+
+
+                                    },
+
+
+                                    {
+
+                                        label:
+
+                                            "Ngưỡng cảnh báo (1000 ppm)",
+
+
+                                        data:
+
+                                            data.labels.map(
+
+                                                () => 1000
+
+                                            ),
+
+
+                                        borderDash:
+
+                                            [5, 5],
+
+
+                                        borderWidth:
+
+                                            1,
+
+
+                                        pointRadius:
+
+                                            0
+
+
+                                    }
+
+                                ]
+
+                        },
+
+
+                    options:
+
+                        {
+
+                            responsive:
+
+                                true,
+
+
+                            maintainAspectRatio:
+
+                                false,
+
+
+                            interaction:
+
+                                {
+
+                                    mode:
+
+                                        "index",
+
+
+                                    intersect:
+
+                                        false
+
+                                },
+
+
+                            scales:
+
+                                {
+
+                                    x:
+
+                                        {
+
+                                            ticks:
+
+                                                {
+
+                                                    maxTicksLimit:
+
+                                                        10
+
+                                                }
+
+                                        },
+
+
+                                    y:
+
+                                        {
+
+                                            beginAtZero:
+
+                                                false,
+
+
+                                            title:
+
+                                                {
+
+                                                    display:
+
+                                                        true,
+
+
+                                                    text:
+
+                                                        "ppm"
+
+                                                }
+
+                                        }
+
+                                }
+
+                        }
+
+                }
+
+            );
+
+    }
+
+
+    // ==================================================
+    // BIỂU ĐỒ PM2.5
+    // ==================================================
+
+    const pm25Canvas =
+        document.getElementById(
+            "pm25Chart"
+        );
+
+
+    if (
+
+        pm25Canvas
+
+    ) {
+
+        pm25Chart =
+            new Chart(
+
+                pm25Canvas,
+
+                {
+
+                    type:
+
+                        "line",
+
+
+                    data:
+
+                        {
+
+                            labels:
+
+                                data.labels,
+
+
+                            datasets:
+
+                                [
+
+                                    {
+
+                                        label:
+
+                                            "PM2.5 (µg/m³)",
+
+
+                                        data:
+
+                                            data.pm25,
+
+
+                                        borderWidth:
+
+                                            2,
+
+
+                                        tension:
+
+                                            0.3,
+
+
+                                        pointRadius:
+
+                                            2
+
+                                    },
+
+
+                                    {
+
+                                        label:
+
+                                            "Ngưỡng cảnh báo (12 µg/m³)",
+
+
+                                        data:
+
+                                            data.labels.map(
+
+                                                () => 12
+
+                                            ),
+
+
+                                        borderDash:
+
+                                            [5, 5],
+
+
+                                        borderWidth:
+
+                                            1,
+
+
+                                        pointRadius:
+
+                                            0
+
+                                    }
+
+                                ]
+
+                        },
+
+
+                    options:
+
+                        {
+
+                            responsive:
+
+                                true,
+
+
+                            maintainAspectRatio:
+
+                                false,
+
+
+                            interaction:
+
+                                {
+
+                                    mode:
+
+                                        "index",
+
+
+                                    intersect:
+
+                                        false
+
+                                },
+
+
+                            scales:
+
+                                {
+
+                                    x:
+
+                                        {
+
+                                            ticks:
+
+                                                {
+
+                                                    maxTicksLimit:
+
+                                                        10
+
+                                                }
+
+                                        },
+
+
+                                    y:
+
+                                        {
+
+                                            beginAtZero:
+
+                                                true,
+
+
+                                            title:
+
+                                                {
+
+                                                    display:
+
+                                                        true,
+
+
+                                                    text:
+
+                                                        "µg/m³"
+
+                                                }
+
+                                        }
+
+                                }
+
+                        }
+
+                }
+
+            );
+
+    }
+
+
+    // ==================================================
+    // BIỂU ĐỒ SỐ NGƯỜI
+    // ==================================================
+
+    const peopleCanvas =
+        document.getElementById(
+            "peopleChart"
+        );
+
+
+    if (
+
+        peopleCanvas
+
+    ) {
+
+        peopleChart =
+            new Chart(
+
+                peopleCanvas,
+
+                {
+
+                    type:
+
+                        "line",
+
+
+                    data:
+
+                        {
+
+                            labels:
+
+                                data.labels,
+
+
+                            datasets:
+
+                                [
+
+                                    {
+
+                                        label:
+
+                                            "Số người",
+
+
+                                        data:
+
+                                            data.people,
+
+
+                                        borderWidth:
+
+                                            2,
+
+
+                                        tension:
+
+                                            0.2,
+
+
+                                        pointRadius:
+
+                                            2
+
+                                    },
+
+
+                                    {
+
+                                        label:
+
+                                            "Ngưỡng đông người (20 người)",
+
+
+                                        data:
+
+                                            data.labels.map(
+
+                                                () => 20
+
+                                            ),
+
+
+                                        borderDash:
+
+                                            [5, 5],
+
+
+                                        borderWidth:
+
+                                            1,
+
+
+                                        pointRadius:
+
+                                            0
+
+                                    }
+
+                                ]
+
+                        },
+
+
+                    options:
+
+                        {
+
+                            responsive:
+
+                                true,
+
+
+                            maintainAspectRatio:
+
+                                false,
+
+
+                            interaction:
+
+                                {
+
+                                    mode:
+
+                                        "index",
+
+
+                                    intersect:
+
+                                        false
+
+                                },
+
+
+                            scales:
+
+                                {
+
+                                    x:
+
+                                        {
+
+                                            ticks:
+
+                                                {
+
+                                                    maxTicksLimit:
+
+                                                        10
+
+                                                }
+
+                                        },
+
+
+                                    y:
+
+                                        {
+
+                                            beginAtZero:
+
+                                                true,
+
+
+                                            title:
+
+                                                {
+
+                                                    display:
+
+                                                        true,
+
+
+                                                    text:
+
+                                                        "Người"
+
+                                                }
+
+                                        }
+
+                                }
+
+                        }
+
+                }
+
+            );
+
+    }
 
 }
 
 
-// =====================================================
-// HIỆU CHỈNH SỐ NGƯỜI
-// =====================================================
+// ======================================================
+// CẬP NHẬT SỐ NGƯỜI
+// ======================================================
+
 
 async function updatePeople() {
 
@@ -812,21 +1601,25 @@ async function updatePeople() {
 
 
     const people =
-        parseInt(
+        Number(
+
             input.value
+
         );
 
 
     if (
 
-        isNaN(people) ||
+        people < 0 ||
 
-        people < 0
+        !Number.isFinite(people)
 
     ) {
 
         alert(
+
             "Số người không hợp lệ!"
+
         );
 
         return;
@@ -836,51 +1629,96 @@ async function updatePeople() {
 
     try {
 
-        await sendCommand({
+        const response =
+            await fetch(
 
-            action:
-                "set_people",
+                SCRIPT_URL,
 
-            so_nguoi:
-                people
+                {
 
-        });
+                    method:
+
+                        "POST",
+
+
+                    headers:
+
+                        {
+
+                            "Content-Type":
+
+                                "text/plain;charset=utf-8"
+
+                        },
+
+
+                    body:
+
+                        JSON.stringify(
+
+                            {
+
+                                action:
+
+                                    "set_people",
+
+
+                                so_nguoi:
+
+                                    Math.round(
+
+                                        people
+
+                                    )
+
+                            }
+
+                        )
+
+                }
+
+            );
+
+
+        const result =
+            await response.text();
+
+
+        console.log(
+
+            "Phản hồi:",
+
+            result
+
+        );
 
 
         alert(
-            "Đã gửi lệnh cập nhật số người: " +
-            people
-        );
 
+            "✅ Đã gửi lệnh cập nhật số người: " +
 
-        // Cập nhật giao diện ngay
-
-        document.getElementById(
-            "people"
-        ).textContent =
-            people;
-
-
-        // Tải lại dữ liệu sau 2 giây
-
-        setTimeout(
-
-            loadData,
-
-            2000
+            Math.round(people)
 
         );
 
 
-    }
+        document
+            .getElementById(
+                "people"
+            )
+            .textContent =
+                Math.round(people);
 
-    catch (error) {
+
+    } catch (error) {
 
         console.error(error);
 
 
         alert(
-            "Không thể cập nhật số người!"
+
+            "❌ Không thể gửi lệnh cập nhật số người!"
+
         );
 
     }
@@ -888,61 +1726,60 @@ async function updatePeople() {
 }
 
 
-// =====================================================
-// CHUYỂN CHẾ ĐỘ LED
-// =====================================================
-
-async function setLedMode(mode) {
-
-    try {
-
-        await sendCommand({
-
-            action:
-                "set_led",
-
-            mode:
-                mode,
-
-            red:
-                "OFF",
-
-            yellow:
-                "OFF",
-
-            green:
-                "OFF"
-
-        });
+// ======================================================
+// BIẾN LƯU TRẠNG THÁI LED
+// ======================================================
 
 
-        alert(
-            "Đã chuyển sang chế độ " +
-            mode
-        );
+let currentLedMode =
+    "AUTO";
 
 
-    }
+let ledState = {
 
-    catch (error) {
+    red:
 
-        console.error(error);
+        "OFF",
 
 
-        alert(
-            "Không thể gửi lệnh LED!"
-        );
+    yellow:
 
-    }
+        "OFF",
+
+
+    green:
+
+        "OFF"
+
+};
+
+
+// ======================================================
+// ĐẶT CHẾ ĐỘ LED
+// ======================================================
+
+
+function setLedMode(
+
+    mode
+
+) {
+
+    currentLedMode =
+        mode;
+
+
+    sendLedCommand();
 
 }
 
 
-// =====================================================
+// ======================================================
 // ĐIỀU KHIỂN LED
-// =====================================================
+// ======================================================
 
-async function setLed(
+
+function setLed(
 
     color,
 
@@ -950,103 +1787,130 @@ async function setLed(
 
 ) {
 
-    try {
+    // Chuyển sang MANUAL
 
-        // ============================================
-        // LẤY CHẾ ĐỘ HIỆN TẠI
-        // ============================================
+    currentLedMode =
+        "MANUAL";
+
+
+    // Cập nhật LED được chọn
+
+    ledState[color] =
+        state;
+
+
+    sendLedCommand();
+
+}
+
+
+// ======================================================
+// GỬI LỆNH LED
+// ======================================================
+
+
+async function sendLedCommand() {
+
+    try {
 
         const data = {
 
             action:
+
                 "set_led",
 
+
             mode:
-                "MANUAL",
+
+                currentLedMode,
+
 
             red:
-                "OFF",
+
+                ledState.red,
+
 
             yellow:
-                "OFF",
+
+                ledState.yellow,
+
 
             green:
-                "OFF"
+
+                ledState.green
 
         };
 
 
-        // ============================================
-        // GÁN LED ĐƯỢC CHỌN
-        // ============================================
+        const response =
+            await fetch(
 
-        if (
+                SCRIPT_URL,
 
-            color === "red"
+                {
 
-        ) {
+                    method:
 
-            data.red =
-                state;
-
-        }
+                        "POST",
 
 
-        if (
+                    headers:
 
-            color === "yellow"
+                        {
 
-        ) {
+                            "Content-Type":
 
-            data.yellow =
-                state;
+                                "text/plain;charset=utf-8"
 
-        }
-
-
-        if (
-
-            color === "green"
-
-        ) {
-
-            data.green =
-                state;
-
-        }
+                        },
 
 
-        // ============================================
-        // GỬI LỆNH
-        // ============================================
+                    body:
 
-        await sendCommand(
-            data
+                        JSON.stringify(
+
+                            data
+
+                        )
+
+                }
+
+            );
+
+
+        const result =
+            await response.text();
+
+
+        console.log(
+
+            "LED response:",
+
+            result
+
         );
 
 
         alert(
 
-            "Đã gửi lệnh: LED " +
-
-            color +
-
-            " = " +
-
-            state
+            "💡 Đã cập nhật điều khiển LED!"
 
         );
 
 
-    }
+    } catch (error) {
 
-    catch (error) {
+        console.error(
 
-        console.error(error);
+            error
+
+        );
 
 
         alert(
-            "Không thể điều khiển LED!"
+
+            "❌ Không thể gửi lệnh điều khiển LED!"
+
         );
 
     }
@@ -1054,21 +1918,34 @@ async function setLed(
 }
 
 
-// =====================================================
-// TỰ ĐỘNG TẢI DỮ LIỆU
-// =====================================================
-
-// Tải ngay khi mở trang
-
-loadData();
+// ======================================================
+// KHỞI ĐỘNG DASHBOARD
+// ======================================================
 
 
-// Tự động cập nhật mỗi 10 giây
+document.addEventListener(
 
-setInterval(
+    "DOMContentLoaded",
 
-    loadData,
+    function () {
 
-    10000
+
+        // Tải dữ liệu lần đầu
+
+        loadData();
+
+
+        // Tự động cập nhật mỗi 30 giây
+
+        setInterval(
+
+            loadData,
+
+            30000
+
+        );
+
+
+    }
 
 );
