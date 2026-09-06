@@ -1,9 +1,8 @@
 // =====================================================
-// CẤU HÌNH HỆ THỐNG
+// CẤU HÌNH
 // =====================================================
 
-
-// URL GOOGLE SHEETS DẠNG CSV
+// Google Sheets xuất dữ liệu dạng CSV
 
 const SHEET_URL =
     "https://docs.google.com/spreadsheets/d/" +
@@ -11,7 +10,7 @@ const SHEET_URL =
     "export?format=csv&gid=0";
 
 
-// URL GOOGLE APPS SCRIPT
+// Google Apps Script
 
 const SCRIPT_URL =
     "https://script.google.com/macros/s/" +
@@ -20,276 +19,41 @@ const SCRIPT_URL =
 
 
 // =====================================================
-// BIẾN LƯU TRẠNG THÁI LED
+// BIẾN LƯU DỮ LIỆU
 // =====================================================
 
-
-let ledMode = "AUTO";
-
-let redStatus = "OFF";
-
-let yellowStatus = "OFF";
-
-let greenStatus = "OFF";
+let latestData = null;
 
 
 // =====================================================
-// HÀM ĐỌC FILE CSV
-//
-// Có xử lý:
-// - Dấu phẩy bên trong dấu ngoặc kép
-// - Số thập phân dùng dấu phẩy
-// - Dữ liệu Google Sheets xuất dạng CSV
-// =====================================================
-
-function parseCSV(csvText) {
-
-    const rows = [];
-
-    let currentRow = [];
-
-    let currentValue = "";
-
-    let insideQuotes = false;
-
-
-    // =============================================
-    // DUYỆT TỪNG KÝ TỰ
-    // =============================================
-
-    for (
-        let i = 0;
-        i < csvText.length;
-        i++
-    ) {
-
-        const character =
-            csvText[i];
-
-
-        // =============================================
-        // XỬ LÝ DẤU NGOẶC KÉP
-        // =============================================
-
-        if (
-            character === '"'
-        ) {
-
-            // -----------------------------------------
-            // DẤU NGOẶC KÉP ĐÔI ""
-            // -----------------------------------------
-
-            if (
-
-                insideQuotes &&
-
-                csvText[i + 1] === '"'
-
-            ) {
-
-                currentValue += '"';
-
-                i++;
-
-            }
-
-
-            // -----------------------------------------
-            // BẮT ĐẦU / KẾT THÚC VÙNG NGOẶC KÉP
-            // -----------------------------------------
-
-            else {
-
-                insideQuotes =
-                    !insideQuotes;
-
-            }
-
-        }
-
-
-        // =============================================
-        // XỬ LÝ DẤU PHẨY
-        // Chỉ tách cột nếu KHÔNG nằm trong ""
-        // =============================================
-
-        else if (
-
-            character === "," &&
-
-            !insideQuotes
-
-        ) {
-
-            currentRow.push(
-
-                currentValue.trim()
-
-            );
-
-
-            currentValue = "";
-
-        }
-
-
-        // =============================================
-        // XỬ LÝ XUỐNG DÒNG
-        // =============================================
-
-        else if (
-
-            (
-                character === "\n" ||
-
-                character === "\r"
-            ) &&
-
-            !insideQuotes
-
-        ) {
-
-            // -----------------------------------------
-            // XỬ LÝ WINDOWS \r\n
-            // -----------------------------------------
-
-            if (
-
-                character === "\r" &&
-
-                csvText[i + 1] === "\n"
-
-            ) {
-
-                i++;
-
-            }
-
-
-            // -----------------------------------------
-            // THÊM GIÁ TRỊ CUỐI CÙNG VÀO DÒNG
-            // -----------------------------------------
-
-            currentRow.push(
-
-                currentValue.trim()
-
-            );
-
-
-            // -----------------------------------------
-            // THÊM DÒNG VÀO DANH SÁCH
-            // -----------------------------------------
-
-            if (
-
-                currentRow.length > 1 ||
-
-                currentRow[0] !== ""
-
-            ) {
-
-                rows.push(
-                    currentRow
-                );
-
-            }
-
-
-            // -----------------------------------------
-            // RESET DÒNG
-            // -----------------------------------------
-
-            currentRow = [];
-
-            currentValue = "";
-
-        }
-
-
-        // =============================================
-        // KÝ TỰ BÌNH THƯỜNG
-        // =============================================
-
-        else {
-
-            currentValue +=
-                character;
-
-        }
-
-    }
-
-
-    // =============================================
-    // THÊM DÒNG CUỐI CÙNG
-    // =============================================
-
-    if (
-
-        currentValue !== "" ||
-
-        currentRow.length > 0
-
-    ) {
-
-        currentRow.push(
-
-            currentValue.trim()
-
-        );
-
-
-        rows.push(
-            currentRow
-        );
-
-    }
-
-
-    return rows;
-
-}
-
-
-// =====================================================
-// HÀM CHUYỂN DỮ LIỆU SANG SỐ
+// CHUYỂN GIÁ TRỊ SANG SỐ
 // =====================================================
 
 function parseNumber(value) {
 
     if (
-
-        value === undefined ||
-
         value === null ||
-
+        value === undefined ||
         value === ""
-
     ) {
 
-        return null;
+        return 0;
 
     }
 
 
-    const normalizedValue =
-        String(value)
+    let text = String(value)
         .trim()
+        .replace(/"/g, "")
         .replace(",", ".");
 
 
-    const number =
-        Number(normalizedValue);
+    const number = Number(text);
 
 
-    if (
+    if (isNaN(number)) {
 
-        Number.isNaN(number)
-
-    ) {
-
-        return null;
+        return 0;
 
     }
 
@@ -300,50 +64,364 @@ function parseNumber(value) {
 
 
 // =====================================================
-// HÀM ĐỊNH DẠNG SỐ
+// LÀM SẠCH TÊN CỘT
 // =====================================================
 
-function formatNumber(value) {
+function normalizeHeader(header) {
 
-    const number =
-        parseNumber(value);
+    return String(header)
 
+        .trim()
 
-    if (
+        .replace(/^\uFEFF/, "")
 
-        number === null
+        .toLowerCase()
 
-    ) {
+        .normalize("NFD")
 
-        return "--";
+        .replace(/[\u0300-\u036f]/g, "")
 
-    }
-
-
-    // Nếu là số nguyên
-
-    if (
-
-        Number.isInteger(number)
-
-    ) {
-
-        return number.toString();
-
-    }
-
-
-    // Làm tròn tối đa 2 chữ số thập phân
-
-    return number
-        .toFixed(2)
-        .replace(/\.?0+$/, "");
+        .replace(/\s+/g, "_");
 
 }
 
 
 // =====================================================
-// HÀM ĐỌC DỮ LIỆU TỪ GOOGLE SHEETS
+// CHUYỂN CSV THÀNH DỮ LIỆU
+// =====================================================
+
+function parseCSV(csvText) {
+
+    const lines =
+        csvText
+            .trim()
+            .split(/\r?\n/);
+
+
+    if (lines.length < 2) {
+
+        return [];
+
+    }
+
+
+    // ================================================
+    // ĐỌC HEADER
+    // ================================================
+
+    const headers =
+        splitCSVLine(lines[0])
+            .map(
+                normalizeHeader
+            );
+
+
+    const data = [];
+
+
+    // ================================================
+    // ĐỌC TỪNG DÒNG
+    // ================================================
+
+    for (
+        let i = 1;
+        i < lines.length;
+        i++
+    ) {
+
+        const line =
+            lines[i]
+                .trim();
+
+
+        if (!line) {
+
+            continue;
+
+        }
+
+
+        const values =
+            splitCSVLine(line);
+
+
+        const row = {};
+
+
+        headers.forEach(
+
+            function (header, index) {
+
+                row[header] =
+                    values[index] !== undefined
+                        ? values[index]
+                        : "";
+
+            }
+
+        );
+
+
+        data.push(row);
+
+    }
+
+
+    return data;
+
+}
+
+
+// =====================================================
+// TÁCH DÒNG CSV
+// HỖ TRỢ DỮ LIỆU CÓ DẤU NHÁY
+// =====================================================
+
+function splitCSVLine(line) {
+
+    const result = [];
+
+    let current = "";
+
+    let insideQuotes = false;
+
+
+    for (
+        let i = 0;
+        i < line.length;
+        i++
+    ) {
+
+        const character =
+            line[i];
+
+
+        // ============================================
+        // XỬ LÝ DẤU NHÁY
+        // ============================================
+
+        if (character === '"') {
+
+            insideQuotes =
+                !insideQuotes;
+
+
+            continue;
+
+        }
+
+
+        // ============================================
+        // XỬ LÝ DẤU PHẨY
+        // ============================================
+
+        if (
+            character === "," &&
+            !insideQuotes
+        ) {
+
+            result.push(
+                current.trim()
+            );
+
+            current = "";
+
+        }
+
+        else {
+
+            current += character;
+
+        }
+
+    }
+
+
+    // Thêm giá trị cuối cùng
+
+    result.push(
+        current.trim()
+    );
+
+
+    return result;
+
+}
+
+
+// =====================================================
+// LẤY GIÁ TRỊ THEO NHIỀU TÊN CỘT CÓ THỂ CÓ
+// =====================================================
+
+function getValue(row, possibleNames) {
+
+    for (
+        const name of possibleNames
+    ) {
+
+        const normalizedName =
+            normalizeHeader(name);
+
+
+        if (
+            row.hasOwnProperty(
+                normalizedName
+            )
+        ) {
+
+            return row[
+                normalizedName
+            ];
+
+        }
+
+    }
+
+
+    return "";
+
+}
+
+
+// =====================================================
+// CHUYỂN DÒNG DỮ LIỆU THÀNH DỮ LIỆU CẢM BIẾN
+// =====================================================
+
+function convertRowToSensorData(row) {
+
+    // ================================================
+    // THỜI GIAN
+    // ================================================
+
+    const time =
+        getValue(
+            row,
+            [
+                "Thoi_gian",
+                "Thời gian",
+                "Timestamp",
+                "Time"
+            ]
+        );
+
+
+    // ================================================
+    // NHIỆT ĐỘ
+    // ================================================
+
+    const temperature =
+        parseNumber(
+
+            getValue(
+                row,
+                [
+                    "Nhiet_do",
+                    "Nhiệt độ",
+                    "Temperature"
+                ]
+            )
+
+        );
+
+
+    // ================================================
+    // ĐỘ ẨM
+    // ================================================
+
+    const humidity =
+        parseNumber(
+
+            getValue(
+                row,
+                [
+                    "Do_am",
+                    "Độ ẩm",
+                    "Humidity"
+                ]
+            )
+
+        );
+
+
+    // ================================================
+    // CO2
+    // ================================================
+
+    const co2 =
+        parseNumber(
+
+            getValue(
+                row,
+                [
+                    "CO2",
+                    "CO₂",
+                    "Co2"
+                ]
+            )
+
+        );
+
+
+    // ================================================
+    // PM2.5
+    // ================================================
+
+    const pm25 =
+        parseNumber(
+
+            getValue(
+                row,
+                [
+                    "PM2.5",
+                    "PM25",
+                    "Pm2.5",
+                    "Pm25"
+                ]
+            )
+
+        );
+
+
+    // ================================================
+    // SỐ NGƯỜI
+    // ================================================
+
+    const people =
+        parseNumber(
+
+            getValue(
+                row,
+                [
+                    "So_nguoi",
+                    "Số người",
+                    "People"
+                ]
+            )
+
+        );
+
+
+    return {
+
+        time: time,
+
+        temperature: temperature,
+
+        humidity: humidity,
+
+        co2: co2,
+
+        pm25: pm25,
+
+        people: people
+
+    };
+
+}
+
+
+// =====================================================
+// TẢI DỮ LIỆU TỪ GOOGLE SHEETS
 // =====================================================
 
 async function loadData() {
@@ -355,350 +433,131 @@ async function loadData() {
         );
 
 
-        // =============================================
-        // TẢI FILE CSV
-        // =============================================
+        // Thêm thời gian để tránh cache
+
+        const url =
+            SHEET_URL +
+            "&t=" +
+            new Date().getTime();
+
 
         const response =
-            await fetch(
-
-                SHEET_URL +
-                "&t=" +
-                new Date().getTime()
-
-            );
+            await fetch(url);
 
 
-        // =============================================
-        // KIỂM TRA KẾT NỐI
-        // =============================================
-
-        if (
-
-            !response.ok
-
-        ) {
+        if (!response.ok) {
 
             throw new Error(
-
-                "Không thể tải dữ liệu"
-
+                "Không thể tải Google Sheets"
             );
 
         }
 
-
-        // =============================================
-        // ĐỌC NỘI DUNG CSV
-        // =============================================
 
         const csvText =
             await response.text();
 
 
-        // =============================================
-        // KIỂM TRA CSV
-        // =============================================
+        console.log(
+            "CSV nhận được:"
+        );
 
-        if (
-
-            !csvText ||
-
-            csvText.trim() === ""
-
-        ) {
-
-            throw new Error(
-
-                "Google Sheets chưa có dữ liệu"
-
-            );
-
-        }
+        console.log(
+            csvText.substring(0, 1000)
+        );
 
 
-        // =============================================
-        // ĐỌC CSV ĐÚNG ĐỊNH DẠNG
-        // =============================================
+        // ============================================
+        // PHÂN TÍCH CSV
+        // ============================================
 
         const rows =
-            parseCSV(
-                csvText
-            );
+            parseCSV(csvText);
 
-
-        // =============================================
-        // KIỂM TRA SỐ DÒNG
-        // =============================================
 
         if (
-
-            rows.length < 2
-
+            rows.length === 0
         ) {
 
             throw new Error(
-
-                "Chưa có dữ liệu hợp lệ"
-
+                "Google Sheets chưa có dữ liệu"
             );
 
         }
 
 
-        // =============================================
-        // LẤY TÊN CỘT
-        // =============================================
+        // ============================================
+        // IN TÊN CỘT RA CONSOLE
+        // ============================================
 
-        const headers =
-            rows[0].map(
+        console.log(
+            "Tên cột:"
+        );
 
-                header =>
+        console.log(
+            Object.keys(rows[0])
+        );
 
-                    header
-                    .trim()
-                    .replace(
-                        /^\uFEFF/,
-                        ""
-                    )
 
+        // ============================================
+        // LẤY DÒNG DỮ LIỆU MỚI NHẤT
+        // ============================================
+
+        const lastRow =
+            rows[
+                rows.length - 1
+            ];
+
+
+        console.log(
+            "Dòng mới nhất:"
+        );
+
+        console.log(
+            lastRow
+        );
+
+
+        // ============================================
+        // CHUYỂN ĐỔI DỮ LIỆU
+        // ============================================
+
+        latestData =
+            convertRowToSensorData(
+                lastRow
             );
 
 
         console.log(
-
-            "Tên các cột:",
-
-            headers
-
+            "Dữ liệu đã xử lý:"
         );
-
-
-        // =============================================
-        // TÌM DÒNG DỮ LIỆU MỚI NHẤT HỢP LỆ
-        // =============================================
-
-        let latestRow = null;
-
-
-        for (
-
-            let i =
-                rows.length - 1;
-
-            i >= 1;
-
-            i--
-
-        ) {
-
-            const row =
-                rows[i];
-
-
-            // -----------------------------------------
-            // BỎ QUA DÒNG TRỐNG
-            // -----------------------------------------
-
-            if (
-
-                !row ||
-
-                row.length === 0
-
-            ) {
-
-                continue;
-
-            }
-
-
-            // -----------------------------------------
-            // KIỂM TRA CÓ DỮ LIỆU THỜI GIAN
-            // -----------------------------------------
-
-            if (
-
-                row[0] !== undefined &&
-
-                String(
-                    row[0]
-                ).trim() !== ""
-
-            ) {
-
-                latestRow =
-                    row;
-
-                break;
-
-            }
-
-        }
-
-
-        // =============================================
-        // KHÔNG TÌM THẤY DỮ LIỆU
-        // =============================================
-
-        if (
-
-            !latestRow
-
-        ) {
-
-            throw new Error(
-
-                "Không tìm thấy dữ liệu mới nhất"
-
-            );
-
-        }
-
-
-        // =============================================
-        // TẠO OBJECT DỮ LIỆU
-        // =============================================
-
-        const latestData = {};
-
-
-        headers.forEach(
-
-            (
-                header,
-                index
-            ) => {
-
-                latestData[
-                    header
-                ] =
-                    latestRow[
-                        index
-                    ] !== undefined
-
-                        ? latestRow[
-                            index
-                        ]
-
-                        : "";
-
-            }
-
-        );
-
-
-        // =============================================
-        // HIỂN THỊ DEBUG
-        // =============================================
-
-        console.log(
-
-            "================================"
-        );
-
-
-        console.log(
-
-            "DỮ LIỆU MỚI NHẤT:"
-        );
-
 
         console.log(
             latestData
         );
 
 
-        console.log(
+        // ============================================
+        // HIỂN THỊ
+        // ============================================
 
-            "Nhiệt độ:",
-
-            latestData["Nhiet_do"]
-        );
-
-
-        console.log(
-
-            "Độ ẩm:",
-
-            latestData["Do_am"]
-        );
-
-
-        console.log(
-
-            "CO2:",
-
-            latestData["CO2"]
-        );
-
-
-        console.log(
-
-            "PM2.5:",
-
-            latestData["PM2.5"]
-        );
-
-
-        console.log(
-
-            "Số người:",
-
-            latestData["So_nguoi"]
-        );
-
-
-        console.log(
-
-            "Thời gian:",
-
-            latestData["Thoi_gian"]
-        );
-
-
-        console.log(
-
-            "================================"
-        );
-
-
-        // =============================================
-        // CẬP NHẬT DASHBOARD
-        // =============================================
-
-        updateDashboard(
-
-            latestData
-
-        );
+        updateDashboard();
 
 
     }
 
-
-    // =================================================
-    // XỬ LÝ LỖI
-    // =================================================
-
     catch (error) {
 
         console.error(
-
             "Lỗi tải dữ liệu:",
-
             error
-
         );
 
 
-        document
-            .getElementById(
-                "lastUpdate"
-            )
-            .textContent =
-
-                "Không thể tải dữ liệu";
+        document.getElementById(
+            "lastUpdate"
+        ).textContent =
+            "Không thể tải dữ liệu";
 
     }
 
@@ -709,150 +568,108 @@ async function loadData() {
 // CẬP NHẬT DASHBOARD
 // =====================================================
 
-function updateDashboard(data) {
+function updateDashboard() {
 
-    // =============================================
-    // LẤY DỮ LIỆU THEO TÊN CỘT
-    // =============================================
+    if (!latestData) {
 
-    const temperature =
-        data["Nhiet_do"];
+        return;
 
-    const humidity =
-        data["Do_am"];
-
-    const co2 =
-        data["CO2"];
-
-    const pm25 =
-        data["PM2.5"];
-
-    const people =
-        data["So_nguoi"];
-
-    const time =
-        data["Thoi_gian"];
+    }
 
 
-    // =============================================
-    // HIỂN THỊ NHIỆT ĐỘ
-    // =============================================
+    // ================================================
+    // HIỂN THỊ THỜI GIAN
+    // ================================================
 
-    document
-        .getElementById(
-            "temperature"
-        )
-        .textContent =
-            formatNumber(
-                temperature
+    document.getElementById(
+        "lastUpdate"
+    ).textContent =
+        latestData.time ||
+        new Date()
+            .toLocaleString(
+                "vi-VN"
             );
 
 
-    // =============================================
-    // HIỂN THỊ ĐỘ ẨM
-    // =============================================
+    // ================================================
+    // NHIỆT ĐỘ
+    // ================================================
 
-    document
-        .getElementById(
-            "humidity"
-        )
-        .textContent =
-            formatNumber(
-                humidity
-            );
+    document.getElementById(
+        "temperature"
+    ).textContent =
+        latestData.temperature
+            .toFixed(1);
 
 
-    // =============================================
-    // HIỂN THỊ CO2
-    // =============================================
+    // ================================================
+    // ĐỘ ẨM
+    // ================================================
 
-    document
-        .getElementById(
-            "co2"
-        )
-        .textContent =
-            formatNumber(
-                co2
-            );
+    document.getElementById(
+        "humidity"
+    ).textContent =
+        latestData.humidity
+            .toFixed(1);
 
 
-    // =============================================
-    // HIỂN THỊ PM2.5
-    // =============================================
+    // ================================================
+    // CO2
+    // ================================================
 
-    document
-        .getElementById(
-            "pm25"
-        )
-        .textContent =
-            formatNumber(
-                pm25
-            );
+    document.getElementById(
+        "co2"
+    ).textContent =
+        latestData.co2
+            .toFixed(0);
 
 
-    // =============================================
-    // HIỂN THỊ SỐ NGƯỜI
-    // =============================================
+    // ================================================
+    // PM2.5
+    // ================================================
 
-    document
-        .getElementById(
-            "people"
-        )
-        .textContent =
-            formatNumber(
-                people
-            );
+    document.getElementById(
+        "pm25"
+    ).textContent =
+        latestData.pm25
+            .toFixed(1);
 
 
-    // =============================================
-    // ĐỒNG BỘ Ô NHẬP SỐ NGƯỜI
-    // =============================================
+    // ================================================
+    // SỐ NGƯỜI
+    // ================================================
 
-    const peopleNumber =
-        parseNumber(
-            people
+    document.getElementById(
+        "people"
+    ).textContent =
+        latestData.people
+            .toFixed(0);
+
+
+    // ================================================
+    // CẬP NHẬT Ô HIỆU CHỈNH SỐ NGƯỜI
+    // ================================================
+
+    const peopleInput =
+        document.getElementById(
+            "peopleInput"
         );
 
 
-    document
-        .getElementById(
-            "peopleInput"
-        )
-        .value =
+    if (peopleInput) {
 
-            peopleNumber !== null
+        peopleInput.value =
+            latestData.people
+                .toFixed(0);
 
-                ? Math.round(
-                    peopleNumber
-                )
-
-                : 0;
+    }
 
 
-    // =============================================
-    // HIỂN THỊ THỜI GIAN
-    // =============================================
-
-    document
-        .getElementById(
-            "lastUpdate"
-        )
-        .textContent =
-
-            time || "--";
-
-
-    // =============================================
+    // ================================================
     // CẬP NHẬT TRẠNG THÁI KHÔNG KHÍ
-    // =============================================
+    // ================================================
 
-    updateAirStatus(
-
-        co2,
-
-        pm25
-
-    );
+    updateAirStatus();
 
 }
 
@@ -861,174 +678,155 @@ function updateDashboard(data) {
 // ĐÁNH GIÁ CHẤT LƯỢNG KHÔNG KHÍ
 // =====================================================
 
-function updateAirStatus(
-    co2,
-    pm25
-) {
+function updateAirStatus() {
 
-    const statusElement =
-        document
-        .getElementById(
+    const airStatus =
+        document.getElementById(
             "airStatus"
         );
 
 
-    const co2Value =
-        parseNumber(
-            co2
-        );
-
-
-    const pm25Value =
-        parseNumber(
-            pm25
-        );
-
-
-    // =============================================
-    // KIỂM TRA DỮ LIỆU
-    // =============================================
-
-    if (
-
-        co2Value === null ||
-
-        pm25Value === null
-
-    ) {
-
-        statusElement.textContent =
-            "⚪ CHƯA ĐỦ DỮ LIỆU ĐỂ ĐÁNH GIÁ";
-
-        statusElement.style.background =
-            "#e5e7eb";
-
-        statusElement.style.color =
-            "#374151";
+    if (!airStatus) {
 
         return;
 
     }
 
 
-    // =============================================
-    // MỨC CẢNH BÁO
-    // =============================================
+    // ================================================
+    // MỨC NGUY HIỂM
+    // ================================================
 
     if (
 
-        co2Value >= 1000 ||
+        latestData.co2 >= 1000 ||
 
-        pm25Value >= 12
+        latestData.pm25 >= 35
 
     ) {
 
-        statusElement.textContent =
-            "🔴 CẢNH BÁO: Chất lượng không khí không tốt";
+        airStatus.innerHTML =
+            "🔴 NGUY HIỂM: Chất lượng không khí kém";
 
-        statusElement.style.background =
-            "#fee2e2";
+        airStatus.className =
+            "air-status danger";
 
-        statusElement.style.color =
-            "#b91c1c";
+
+        return;
 
     }
 
 
-    // =============================================
-    // CẦN CHÚ Ý
-    // =============================================
+    // ================================================
+    // MỨC CẦN CHÚ Ý
+    // ================================================
 
-    else if (
+    if (
 
-        co2Value >= 800
+        latestData.co2 >= 800 ||
+
+        latestData.pm25 >= 12
 
     ) {
 
-        statusElement.textContent =
-            "🟡 CẦN CHÚ Ý: CO₂ đang tăng";
+        airStatus.innerHTML =
+            "🟡 CẦN CHÚ Ý: Chất lượng không khí đang tăng";
 
-        statusElement.style.background =
-            "#fef3c7";
+        airStatus.className =
+            "air-status warning";
 
-        statusElement.style.color =
-            "#92400e";
+
+        return;
 
     }
 
 
-    // =============================================
+    // ================================================
     // BÌNH THƯỜNG
-    // =============================================
+    // ================================================
 
-    else {
+    airStatus.innerHTML =
+        "🟢 BÌNH THƯỜNG: Chất lượng không khí tốt";
 
-        statusElement.textContent =
-            "🟢 BÌNH THƯỜNG: Chất lượng không khí tốt";
-
-        statusElement.style.background =
-            "#dcfce7";
-
-        statusElement.style.color =
-            "#166534";
-
-    }
+    airStatus.className =
+        "air-status normal";
 
 }
 
 
 // =====================================================
-// CẬP NHẬT SỐ NGƯỜI
+// GỬI DỮ LIỆU POST ĐẾN GOOGLE APPS SCRIPT
+// =====================================================
+
+async function sendCommand(data) {
+
+    const response =
+        await fetch(
+
+            SCRIPT_URL,
+
+            {
+
+                method: "POST",
+
+                headers: {
+
+                    "Content-Type":
+                        "text/plain;charset=utf-8"
+
+                },
+
+                body:
+                    JSON.stringify(data)
+
+            }
+
+        );
+
+
+    const result =
+        await response.text();
+
+
+    console.log(
+        "Server response:",
+        result
+    );
+
+
+    return result;
+
+}
+
+
+// =====================================================
+// HIỆU CHỈNH SỐ NGƯỜI
 // =====================================================
 
 async function updatePeople() {
 
-    const peopleInput =
-        document
-        .getElementById(
+    const input =
+        document.getElementById(
             "peopleInput"
         );
 
 
     const people =
-        Number(
-            peopleInput.value
+        parseInt(
+            input.value
         );
 
 
-    // =============================================
-    // KIỂM TRA DỮ LIỆU
-    // =============================================
-
     if (
 
-        Number.isNaN(
-            people
-        )
-
-    ) {
-
-        alert(
-
-            "Vui lòng nhập số người hợp lệ"
-
-        );
-
-        return;
-
-    }
-
-
-    if (
+        isNaN(people) ||
 
         people < 0
 
     ) {
 
         alert(
-
-            "Số người không thể nhỏ hơn 0"
-
+            "Số người không hợp lệ!"
         );
 
         return;
@@ -1036,96 +834,40 @@ async function updatePeople() {
     }
 
 
-    // =============================================
-    // TẠO DỮ LIỆU GỬI ĐI
-    // =============================================
-
-    const data = {
-
-        action:
-            "set_people",
-
-        so_nguoi:
-            Math.round(
-                people
-            )
-
-    };
-
-
     try {
 
-        console.log(
+        await sendCommand({
 
-            "Gửi lệnh số người:",
+            action:
+                "set_people",
 
-            data
+            so_nguoi:
+                people
 
-        );
-
-
-        // =============================================
-        // GỬI POST
-        // =============================================
-
-        const response =
-            await fetch(
-
-                SCRIPT_URL,
-
-                {
-
-                    method:
-                        "POST",
-
-                    headers: {
-
-                        "Content-Type":
-                            "text/plain;charset=utf-8"
-
-                    },
-
-                    body:
-                        JSON.stringify(
-                            data
-                        )
-
-                }
-
-            );
-
-
-        const result =
-            await response.text();
-
-
-        console.log(
-
-            "Phản hồi:",
-
-            result
-
-        );
-
-
-        // =============================================
-        // CẬP NHẬT GIAO DIỆN
-        // =============================================
-
-        document
-            .getElementById(
-                "people"
-            )
-            .textContent =
-
-                Math.round(
-                    people
-                );
+        });
 
 
         alert(
+            "Đã gửi lệnh cập nhật số người: " +
+            people
+        );
 
-            "Đã gửi lệnh cập nhật số người"
+
+        // Cập nhật giao diện ngay
+
+        document.getElementById(
+            "people"
+        ).textContent =
+            people;
+
+
+        // Tải lại dữ liệu sau 2 giây
+
+        setTimeout(
+
+            loadData,
+
+            2000
 
         );
 
@@ -1134,19 +876,11 @@ async function updatePeople() {
 
     catch (error) {
 
-        console.error(
-
-            "Lỗi cập nhật số người:",
-
-            error
-
-        );
+        console.error(error);
 
 
         alert(
-
-            "Không thể gửi lệnh"
-
+            "Không thể cập nhật số người!"
         );
 
     }
@@ -1155,16 +889,51 @@ async function updatePeople() {
 
 
 // =====================================================
-// THAY ĐỔI CHẾ ĐỘ LED
+// CHUYỂN CHẾ ĐỘ LED
 // =====================================================
 
-function setLedMode(mode) {
+async function setLedMode(mode) {
 
-    ledMode =
-        mode;
+    try {
+
+        await sendCommand({
+
+            action:
+                "set_led",
+
+            mode:
+                mode,
+
+            red:
+                "OFF",
+
+            yellow:
+                "OFF",
+
+            green:
+                "OFF"
+
+        });
 
 
-    sendLedCommand();
+        alert(
+            "Đã chuyển sang chế độ " +
+            mode
+        );
+
+
+    }
+
+    catch (error) {
+
+        console.error(error);
+
+
+        alert(
+            "Không thể gửi lệnh LED!"
+        );
+
+    }
 
 }
 
@@ -1173,164 +942,98 @@ function setLedMode(mode) {
 // ĐIỀU KHIỂN LED
 // =====================================================
 
-function setLed(
-    led,
-    status
+async function setLed(
+
+    color,
+
+    state
+
 ) {
-
-    // =============================================
-    // LED ĐỎ
-    // =============================================
-
-    if (
-
-        led === "red"
-
-    ) {
-
-        redStatus =
-            status;
-
-    }
-
-
-    // =============================================
-    // LED VÀNG
-    // =============================================
-
-    else if (
-
-        led === "yellow"
-
-    ) {
-
-        yellowStatus =
-            status;
-
-    }
-
-
-    // =============================================
-    // LED XANH
-    // =============================================
-
-    else if (
-
-        led === "green"
-
-    ) {
-
-        greenStatus =
-            status;
-
-    }
-
-
-    // =============================================
-    // CHUYỂN SANG CHẾ ĐỘ MANUAL
-    // =============================================
-
-    ledMode =
-        "MANUAL";
-
-
-    // =============================================
-    // GỬI LỆNH
-    // =============================================
-
-    sendLedCommand();
-
-}
-
-
-// =====================================================
-// GỬI LỆNH LED
-// =====================================================
-
-async function sendLedCommand() {
-
-    // =============================================
-    // TẠO DỮ LIỆU
-    // =============================================
-
-    const data = {
-
-        action:
-            "set_led",
-
-        mode:
-            ledMode,
-
-        red:
-            redStatus,
-
-        yellow:
-            yellowStatus,
-
-        green:
-            greenStatus
-
-    };
-
-
-    console.log(
-
-        "Gửi lệnh LED:",
-
-        data
-
-    );
-
 
     try {
 
-        // =============================================
-        // GỬI POST
-        // =============================================
+        // ============================================
+        // LẤY CHẾ ĐỘ HIỆN TẠI
+        // ============================================
 
-        const response =
-            await fetch(
+        const data = {
 
-                SCRIPT_URL,
+            action:
+                "set_led",
 
-                {
+            mode:
+                "MANUAL",
 
-                    method:
-                        "POST",
+            red:
+                "OFF",
 
-                    headers: {
+            yellow:
+                "OFF",
 
-                        "Content-Type":
-                            "text/plain;charset=utf-8"
+            green:
+                "OFF"
 
-                    },
-
-                    body:
-                        JSON.stringify(
-                            data
-                        )
-
-                }
-
-            );
+        };
 
 
-        const result =
-            await response.text();
+        // ============================================
+        // GÁN LED ĐƯỢC CHỌN
+        // ============================================
+
+        if (
+
+            color === "red"
+
+        ) {
+
+            data.red =
+                state;
+
+        }
 
 
-        console.log(
+        if (
 
-            "Phản hồi LED:",
+            color === "yellow"
 
-            result
+        ) {
 
+            data.yellow =
+                state;
+
+        }
+
+
+        if (
+
+            color === "green"
+
+        ) {
+
+            data.green =
+                state;
+
+        }
+
+
+        // ============================================
+        // GỬI LỆNH
+        // ============================================
+
+        await sendCommand(
+            data
         );
 
 
         alert(
 
-            "Đã cập nhật điều khiển LED"
+            "Đã gửi lệnh: LED " +
+
+            color +
+
+            " = " +
+
+            state
 
         );
 
@@ -1339,19 +1042,11 @@ async function sendLedCommand() {
 
     catch (error) {
 
-        console.error(
-
-            "Lỗi điều khiển LED:",
-
-            error
-
-        );
+        console.error(error);
 
 
         alert(
-
-            "Không thể gửi lệnh LED"
-
+            "Không thể điều khiển LED!"
         );
 
     }
@@ -1360,22 +1055,20 @@ async function sendLedCommand() {
 
 
 // =====================================================
-// TẢI DỮ LIỆU LẦN ĐẦU
+// TỰ ĐỘNG TẢI DỮ LIỆU
 // =====================================================
+
+// Tải ngay khi mở trang
 
 loadData();
 
 
-// =====================================================
-// TỰ ĐỘNG CẬP NHẬT DỮ LIỆU
-// =====================================================
-
-// Cập nhật mỗi 30 giây
+// Tự động cập nhật mỗi 10 giây
 
 setInterval(
 
     loadData,
 
-    30000
+    10000
 
 );
