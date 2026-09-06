@@ -14,6 +14,18 @@
         Hệ thống giám sát chất lượng không khí
     </title>
 
+
+    <!-- =========================
+         CHART.JS
+    ========================== -->
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+
+    <!-- =========================
+         CSS
+    ========================== -->
+
     <link
         rel="stylesheet"
         href="style.css"
@@ -23,6 +35,7 @@
 
 
 <body>
+
 
     <!-- =========================
          HEADER
@@ -61,7 +74,9 @@
             🕒 Cập nhật lần cuối:
 
             <span id="lastUpdate">
+
                 Đang tải dữ liệu...
+
             </span>
 
         </section>
@@ -231,7 +246,7 @@
 
 
         <!-- =====================
-             ĐIỀU KHIỂN SỐ NGƯỜI
+             HIỆU CHỈNH SỐ NGƯỜI
         ====================== -->
 
         <section class="control-section">
@@ -275,7 +290,9 @@
             </h2>
 
 
-            <!-- CHẾ ĐỘ -->
+            <!-- =====================
+                 CHẾ ĐỘ LED
+            ====================== -->
 
             <div class="led-mode">
 
@@ -299,7 +316,9 @@
             </div>
 
 
-            <!-- LED ĐỎ -->
+            <!-- =====================
+                 LED ĐỎ
+            ====================== -->
 
             <div class="led-control">
 
@@ -324,7 +343,9 @@
             </div>
 
 
-            <!-- LED VÀNG -->
+            <!-- =====================
+                 LED VÀNG
+            ====================== -->
 
             <div class="led-control">
 
@@ -349,7 +370,9 @@
             </div>
 
 
-            <!-- LED XANH -->
+            <!-- =====================
+                 LED XANH
+            ====================== -->
 
             <div class="led-control">
 
@@ -378,19 +401,69 @@
 
 
         <!-- =====================
-             BIỂU ĐỒ
+             BIỂU ĐỒ DỮ LIỆU
         ====================== -->
 
         <section class="chart-section">
 
             <h2>
-                📊 BIỂU ĐỒ DỮ LIỆU
+                📊 BIỂU ĐỒ DỮ LIỆU LỊCH SỬ
             </h2>
 
-            <p>
-                Biểu đồ CO₂, PM2.5 và số người sẽ được
-                tích hợp ở bước tiếp theo.
-            </p>
+
+            <!-- =====================
+                 BIỂU ĐỒ CO2
+            ====================== -->
+
+            <div class="chart-container">
+
+                <h3>
+                    🫁 Nồng độ CO₂ theo thời gian
+                </h3>
+
+
+                <canvas
+                    id="co2Chart"
+                ></canvas>
+
+            </div>
+
+
+            <!-- =====================
+                 BIỂU ĐỒ PM2.5
+            ====================== -->
+
+            <div class="chart-container">
+
+                <h3>
+                    🌫️ Nồng độ PM2.5 theo thời gian
+                </h3>
+
+
+                <canvas
+                    id="pm25Chart"
+                ></canvas>
+
+            </div>
+
+
+            <!-- =====================
+                 BIỂU ĐỒ SỐ NGƯỜI
+            ====================== -->
+
+            <div class="chart-container">
+
+                <h3>
+                    👥 Số người theo thời gian
+                </h3>
+
+
+                <canvas
+                    id="peopleChart"
+                ></canvas>
+
+            </div>
+
 
         </section>
 
