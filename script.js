@@ -3,9 +3,7 @@
 // =====================================================
 
 const SCRIPT_URL =
-    "https://script.google.com/macros/s/" +
-    "AKfycbw5JwJ9Kil9T9ul12UqJ8mXen4l0Exdq4HJaHDK7ZEKdRYy58cBoyEBd9-ynVZo1somoA/" +
-    "exec";
+    "https://script.google.com/macros/s/AKfycbw5JwJ9Kil9T9ul12UqJ8mXen4l0Exdq4HJaHDK7ZEKdRYy58cBoyEBd9-ynVZo1somoA/exec";
 
 
 // =====================================================
@@ -39,78 +37,55 @@ let peopleChart = null;
 
 
 // =====================================================
-// TRẠNG THÁI LED
-// =====================================================
-
-let currentLedMode = "AUTO";
-
-let ledState = {
-
-    red: "OFF",
-
-    yellow: "OFF",
-
-    green: "OFF"
-
-};
-
-
-// =====================================================
-// HÀM CHUYỂN GIÁ TRỊ SANG SỐ
-//
-// Hỗ trợ:
-// 27,68
-// 27.68
-// "27,68"
+// HÀM CHUYỂN DỮ LIỆU SANG SỐ
 // =====================================================
 
 function convertToNumber(value) {
 
     if (
-        value === undefined ||
         value === null ||
+        value === undefined ||
         value === ""
     ) {
 
-        return NaN;
+        return 0;
 
     }
 
 
-    let text =
+    const cleanedValue =
         String(value)
             .trim()
-            .replace(/"/g, "");
-
-
-    text =
-        text.replace(",", ".");
+            .replace(/\s/g, "")
+            .replace(",", ".");
 
 
     const number =
-        Number(text);
+        parseFloat(cleanedValue);
 
 
-    return Number.isFinite(number)
-        ? number
-        : NaN;
+    if (isNaN(number)) {
+
+        return 0;
+
+    }
+
+
+    return number;
 
 }
 
 
 // =====================================================
 // HÀM ĐỌC MỘT DÒNG CSV
-//
-// Hỗ trợ:
-// "27,68"
-// "06/09/2026 11:28:44"
+// XỬ LÝ DỮ LIỆU CÓ DẤU NGOẶC KÉP
 // =====================================================
 
 function parseCSVLine(line) {
 
     const result = [];
 
-    let current = "";
+    let currentValue = "";
 
     let insideQuotes = false;
 
@@ -125,42 +100,15 @@ function parseCSVLine(line) {
             line[i];
 
 
-        // ---------------------------------------------
-        // XỬ LÝ DẤU NGOẶC KÉP
-        // ---------------------------------------------
-
         if (
             character === '"'
         ) {
 
-            // Hai dấu "" liên tiếp
-            // đại diện cho một dấu "
-            if (
-                insideQuotes &&
-                line[i + 1] === '"'
-            ) {
-
-                current += '"';
-
-                i++;
-
-            }
-
-            else {
-
-                insideQuotes =
-                    !insideQuotes;
-
-            }
+            insideQuotes =
+                !insideQuotes;
 
         }
 
-
-        // ---------------------------------------------
-        // DẤU PHẨY PHÂN CÁCH CỘT
-        //
-        // Chỉ có hiệu lực khi không nằm trong ""
-        // ---------------------------------------------
 
         else if (
             character === "," &&
@@ -168,32 +116,26 @@ function parseCSVLine(line) {
         ) {
 
             result.push(
-                current.trim()
+                currentValue.trim()
             );
 
-
-            current = "";
+            currentValue = "";
 
         }
 
 
-        // ---------------------------------------------
-        // KÝ TỰ THÔNG THƯỜNG
-        // ---------------------------------------------
-
         else {
 
-            current += character;
+            currentValue +=
+                character;
 
         }
 
     }
 
 
-    // Thêm cột cuối cùng
-
     result.push(
-        current.trim()
+        currentValue.trim()
     );
 
 
@@ -203,127 +145,14 @@ function parseCSVLine(line) {
 
 
 // =====================================================
-// HÀM ĐỌC TOÀN BỘ CSV
-// =====================================================
-
-function parseCSV(csvText) {
-
-    const lines =
-        csvText
-            .trim()
-            .split(/\r?\n/)
-            .filter(
-                line =>
-                    line.trim() !== ""
-            );
-
-
-    if (
-        lines.length < 2
-    ) {
-
-        return [];
-
-    }
-
-
-    // ================================================
-    // ĐỌC HEADER
-    // ================================================
-
-    const headers =
-        parseCSVLine(
-            lines[0]
-        )
-        .map(
-            header =>
-
-                header
-                    .replace(/"/g, "")
-                    .trim()
-        );
-
-
-    console.log(
-        "Tên cột CSV:",
-        headers
-    );
-
-
-    // ================================================
-    // TẠO DỮ LIỆU
-    // ================================================
-
-    const data = [];
-
-
-    for (
-        let i = 1;
-        i < lines.length;
-        i++
-    ) {
-
-        const values =
-            parseCSVLine(
-                lines[i]
-            );
-
-
-        if (
-            values.length === 0
-        ) {
-
-            continue;
-
-        }
-
-
-        const row = {};
-
-
-        headers.forEach(
-
-            function(
-                header,
-                index
-            ) {
-
-                row[header] =
-                    values[index] !== undefined
-
-                        ? values[index]
-
-                        : "";
-
-            }
-
-        );
-
-
-        data.push(
-            row
-        );
-
-    }
-
-
-    return data;
-
-}
-
-
-// =====================================================
-// ĐỌC THỜI GIAN
-//
-// Định dạng:
-// 06/09/2026 11:28:44
+// HÀM ĐỌC THỜI GIAN
+// ĐỊNH DẠNG:
+// dd/MM/yyyy HH:mm:ss
 // =====================================================
 
 function parseVietnameseDate(value) {
 
-    if (
-        !value
-    ) {
+    if (!value) {
 
         return null;
 
@@ -333,10 +162,8 @@ function parseVietnameseDate(value) {
     const text =
         String(value)
             .trim()
-            .replace(/"/g, "");
+            .replace(/^"|"$/g, "");
 
-
-    // Tách ngày và giờ
 
     const parts =
         text.split(" ");
@@ -370,30 +197,40 @@ function parseVietnameseDate(value) {
 
 
     const day =
-        Number(dateParts[0]);
+        parseInt(
+            dateParts[0]
+        );
 
 
     const month =
-        Number(dateParts[1]) - 1;
+        parseInt(
+            dateParts[1]
+        ) - 1;
 
 
     const year =
-        Number(dateParts[2]);
+        parseInt(
+            dateParts[2]
+        );
 
 
     const hour =
-        Number(timeParts[0]);
+        parseInt(
+            timeParts[0]
+        );
 
 
     const minute =
-        Number(timeParts[1]);
+        parseInt(
+            timeParts[1]
+        );
 
 
     const second =
         timeParts.length >= 3
-
-            ? Number(timeParts[2])
-
+            ? parseInt(
+                timeParts[2]
+            )
             : 0;
 
 
@@ -415,19 +252,24 @@ function parseVietnameseDate(value) {
         );
 
 
-    return Number.isNaN(
-        date.getTime()
-    )
+    if (
+        isNaN(
+            date.getTime()
+        )
+    ) {
 
-        ? null
+        return null;
 
-        : date;
+    }
+
+
+    return date;
 
 }
 
 
 // =====================================================
-// TẢI DỮ LIỆU TỪ GOOGLE SHEETS
+// ĐỌC DỮ LIỆU CSV
 // =====================================================
 
 async function loadData() {
@@ -439,26 +281,20 @@ async function loadData() {
         );
 
 
-        // Thêm timestamp để tránh cache
-
-        const url =
-            SHEET_URL +
-            "&t=" +
-            Date.now();
-
-
         const response =
             await fetch(
-                url
+
+                SHEET_URL +
+                "&t=" +
+                new Date().getTime()
+
             );
 
 
-        if (
-            !response.ok
-        ) {
+        if (!response.ok) {
 
             throw new Error(
-                "Không thể tải dữ liệu Google Sheets"
+                "Không thể tải dữ liệu Google Sheets."
             );
 
         }
@@ -468,163 +304,254 @@ async function loadData() {
             await response.text();
 
 
-        // =============================================
-        // PHÂN TÍCH CSV
-        // =============================================
-
-        const rawData =
-            parseCSV(
-                csvText
-            );
+        const rows =
+            csvText
+                .trim()
+                .split(/\r?\n/);
 
 
         if (
-            rawData.length === 0
+            rows.length < 2
         ) {
 
             throw new Error(
-                "Google Sheets chưa có dữ liệu"
+                "Google Sheets chưa có dữ liệu."
             );
 
         }
 
 
+        // =============================================
+        // ĐỌC HEADER
+        // =============================================
+
+        const headers =
+            parseCSVLine(
+                rows[0]
+            ).map(
+
+                function(header) {
+
+                    return header
+                        .replace(/^"|"$/g, "")
+                        .trim();
+
+                }
+
+            );
+
+
         console.log(
-            "Tổng số dòng:",
-            rawData.length
+            "Headers:",
+            headers
         );
+
+
+        // =============================================
+        // XÁC ĐỊNH VỊ TRÍ CỘT
+        // =============================================
+
+        const timeIndex =
+            headers.indexOf(
+                "Thoi_gian"
+            );
+
+
+        const temperatureIndex =
+            headers.indexOf(
+                "Nhiet_do"
+            );
+
+
+        const humidityIndex =
+            headers.indexOf(
+                "Do_am"
+            );
+
+
+        const co2Index =
+            headers.indexOf(
+                "CO2"
+            );
+
+
+        const pm25Index =
+            headers.indexOf(
+                "PM2.5"
+            );
+
+
+        const peopleIndex =
+            headers.indexOf(
+                "So_nguoi"
+            );
+
+
+        console.log({
+
+            timeIndex,
+
+            temperatureIndex,
+
+            humidityIndex,
+
+            co2Index,
+
+            pm25Index,
+
+            peopleIndex
+
+        });
+
+
+        // =============================================
+        // KIỂM TRA CỘT
+        // =============================================
+
+        if (
+
+            timeIndex === -1 ||
+            temperatureIndex === -1 ||
+            humidityIndex === -1 ||
+            co2Index === -1 ||
+            pm25Index === -1 ||
+            peopleIndex === -1
+
+        ) {
+
+            throw new Error(
+                "Không tìm thấy đầy đủ các cột dữ liệu."
+            );
+
+        }
 
 
         // =============================================
         // XỬ LÝ DỮ LIỆU
         // =============================================
 
-        const processedData =
-            rawData
-                .map(
-
-                    function(row) {
-
-                        const time =
-                            parseVietnameseDate(
-                                row["Thoi_gian"]
-                            );
+        allData = [];
 
 
-                        const temperature =
-                            convertToNumber(
-                                row["Nhiet_do"]
-                            );
+        for (
+            let i = 1;
+            i < rows.length;
+            i++
+        ) {
+
+            if (
+                !rows[i].trim()
+            ) {
+
+                continue;
+
+            }
 
 
-                        const humidity =
-                            convertToNumber(
-                                row["Do_am"]
-                            );
-
-
-                        const co2 =
-                            convertToNumber(
-                                row["CO2"]
-                            );
-
-
-                        const pm25 =
-                            convertToNumber(
-                                row["PM2.5"]
-                            );
-
-
-                        const people =
-                            convertToNumber(
-                                row["So_nguoi"]
-                            );
-
-
-                        return {
-
-                            time:
-
-                                time,
-
-
-                            temperature:
-
-                                temperature,
-
-
-                            humidity:
-
-                                humidity,
-
-
-                            co2:
-
-                                co2,
-
-
-                            pm25:
-
-                                pm25,
-
-
-                            people:
-
-                                people
-
-                        };
-
-                    }
-
-                )
-
-
-                // =====================================
-                // LOẠI DÒNG KHÔNG HỢP LỆ
-                // =====================================
-
-                .filter(
-
-                    function(item) {
-
-                        return (
-
-                            item.time instanceof Date &&
-
-                            Number.isFinite(
-                                item.temperature
-                            ) &&
-
-                            Number.isFinite(
-                                item.humidity
-                            ) &&
-
-                            Number.isFinite(
-                                item.co2
-                            ) &&
-
-                            Number.isFinite(
-                                item.pm25
-                            ) &&
-
-                            Number.isFinite(
-                                item.people
-                            )
-
-                        );
-
-                    }
-
+            const row =
+                parseCSVLine(
+                    rows[i]
                 );
 
 
-        if (
-            processedData.length === 0
-        ) {
+            if (
+                row.length <
+                headers.length
+            ) {
 
-            throw new Error(
-                "Không có dòng dữ liệu hợp lệ"
-            );
+                console.log(
+                    "Bỏ qua dòng không hợp lệ:",
+                    rows[i]
+                );
+
+                continue;
+
+            }
+
+
+            const timeValue =
+                row[timeIndex]
+                    .replace(/^"|"$/g, "");
+
+
+            const date =
+                parseVietnameseDate(
+                    timeValue
+                );
+
+
+            if (!date) {
+
+                console.log(
+                    "Thời gian không hợp lệ:",
+                    timeValue
+                );
+
+                continue;
+
+            }
+
+
+            const temperature =
+                convertToNumber(
+                    row[
+                        temperatureIndex
+                    ]
+                );
+
+
+            const humidity =
+                convertToNumber(
+                    row[
+                        humidityIndex
+                    ]
+                );
+
+
+            const co2 =
+                convertToNumber(
+                    row[
+                        co2Index
+                    ]
+                );
+
+
+            const pm25 =
+                convertToNumber(
+                    row[
+                        pm25Index
+                    ]
+                );
+
+
+            const people =
+                convertToNumber(
+                    row[
+                        peopleIndex
+                    ]
+                );
+
+
+            allData.push({
+
+                time: date,
+
+                temperature:
+                    temperature,
+
+                humidity:
+                    humidity,
+
+                co2:
+                    co2,
+
+                pm25:
+                    pm25,
+
+                people:
+                    people
+
+            });
 
         }
 
@@ -633,26 +560,22 @@ async function loadData() {
         // SẮP XẾP THEO THỜI GIAN
         // =============================================
 
-        allData =
-            processedData.sort(
+        allData.sort(
 
-                function(
-                    a,
-                    b
-                ) {
+            function(a, b) {
 
-                    return (
-                        a.time -
-                        b.time
-                    );
+                return (
+                    a.time -
+                    b.time
+                );
 
-                }
+            }
 
-            );
+        );
 
 
         console.log(
-            "Dữ liệu hợp lệ:",
+            "Số mẫu dữ liệu:",
             allData.length
         );
 
@@ -679,9 +602,7 @@ async function loadData() {
         updateCharts();
 
 
-    }
-
-    catch (error) {
+    } catch (error) {
 
         console.error(
             "Lỗi tải dữ liệu:",
@@ -689,20 +610,10 @@ async function loadData() {
         );
 
 
-        const lastUpdate =
-            document.getElementById(
-                "lastUpdate"
-            );
-
-
-        if (
-            lastUpdate
-        ) {
-
-            lastUpdate.textContent =
-                "Không thể tải dữ liệu";
-
-        }
+        document.getElementById(
+            "lastUpdate"
+        ).innerText =
+            "Không thể tải dữ liệu";
 
     }
 
@@ -734,155 +645,78 @@ function updateDashboard() {
     // THỜI GIAN
     // =============================================
 
-    const lastUpdate =
-        document.getElementById(
-            "lastUpdate"
+    document.getElementById(
+        "lastUpdate"
+    ).innerText =
+        latest.time.toLocaleString(
+            "vi-VN"
         );
-
-
-    if (
-        lastUpdate
-    ) {
-
-        lastUpdate.textContent =
-            latest.time.toLocaleString(
-                "vi-VN"
-            );
-
-    }
 
 
     // =============================================
     // NHIỆT ĐỘ
     // =============================================
 
-    const temperatureElement =
-        document.getElementById(
-            "temperature"
-        );
-
-
-    if (
-        temperatureElement
-    ) {
-
-        temperatureElement.textContent =
-            latest.temperature.toFixed(
-                1
-            );
-
-    }
+    document.getElementById(
+        "temperature"
+    ).innerText =
+        latest.temperature.toFixed(1);
 
 
     // =============================================
     // ĐỘ ẨM
     // =============================================
 
-    const humidityElement =
-        document.getElementById(
-            "humidity"
-        );
-
-
-    if (
-        humidityElement
-    ) {
-
-        humidityElement.textContent =
-            latest.humidity.toFixed(
-                1
-            );
-
-    }
+    document.getElementById(
+        "humidity"
+    ).innerText =
+        latest.humidity.toFixed(1);
 
 
     // =============================================
     // CO2
     // =============================================
 
-    const co2Element =
-        document.getElementById(
-            "co2"
+    document.getElementById(
+        "co2"
+    ).innerText =
+        Math.round(
+            latest.co2
         );
-
-
-    if (
-        co2Element
-    ) {
-
-        co2Element.textContent =
-            Math.round(
-                latest.co2
-            );
-
-    }
 
 
     // =============================================
     // PM2.5
     // =============================================
 
-    const pm25Element =
-        document.getElementById(
-            "pm25"
-        );
-
-
-    if (
-        pm25Element
-    ) {
-
-        pm25Element.textContent =
-            latest.pm25.toFixed(
-                1
-            );
-
-    }
+    document.getElementById(
+        "pm25"
+    ).innerText =
+        latest.pm25.toFixed(1);
 
 
     // =============================================
     // SỐ NGƯỜI
     // =============================================
 
-    const peopleElement =
-        document.getElementById(
-            "people"
+    document.getElementById(
+        "people"
+    ).innerText =
+        Math.round(
+            latest.people
         );
 
 
-    if (
-        peopleElement
-    ) {
-
-        peopleElement.textContent =
-            Math.round(
-                latest.people
-            );
-
-    }
-
-
     // =============================================
-    // Ô HIỆU CHỈNH SỐ NGƯỜI
+    // Ô NHẬP SỐ NGƯỜI
     // =============================================
 
-    const peopleInput =
-        document.getElementById(
-            "peopleInput"
+    document.getElementById(
+        "peopleInput"
+    ).value =
+        Math.round(
+            latest.people
         );
-
-
-    if (
-        peopleInput &&
-        document.activeElement !== peopleInput
-    ) {
-
-        peopleInput.value =
-            Math.round(
-                latest.people
-            );
-
-    }
 
 
     // =============================================
@@ -890,8 +724,11 @@ function updateDashboard() {
     // =============================================
 
     updateAirStatus(
+
         latest.co2,
+
         latest.pm25
+
     );
 
 }
@@ -913,49 +750,36 @@ function updateAirStatus(
 
 
     if (
-        !statusElement
-    ) {
 
-        return;
-
-    }
-
-
-    // CẢNH BÁO
-
-    if (
         co2 >= 1000 ||
         pm25 >= 12
+
     ) {
 
-        statusElement.textContent =
+        statusElement.innerHTML =
             "🔴 CHẤT LƯỢNG KHÔNG KHÍ CẦN CẢNH BÁO";
 
-
         return;
 
     }
 
-
-    // CẦN CHÚ Ý
 
     if (
+
         co2 >= 800
+
     ) {
 
-        statusElement.textContent =
+        statusElement.innerHTML =
             "🟡 CHẤT LƯỢNG KHÔNG KHÍ CẦN CHÚ Ý";
-
 
         return;
 
     }
 
 
-    // BÌNH THƯỜNG
-
-    statusElement.textContent =
-        "🟢 BÌNH THƯỜNG: Chất lượng không khí tốt";
+    statusElement.innerHTML =
+        "🟢 CHẤT LƯỢNG KHÔNG KHÍ BÌNH THƯỜNG";
 
 }
 
@@ -975,8 +799,6 @@ function getFilteredData() {
     }
 
 
-    // TẤT CẢ
-
     if (
         currentTimeRange === "all"
     ) {
@@ -995,21 +817,18 @@ function getFilteredData() {
     let milliseconds = 0;
 
 
-    // 1 GIỜ
-
     if (
         currentTimeRange === "1h"
     ) {
 
         milliseconds =
+            1 *
             60 *
             60 *
             1000;
 
     }
 
-
-    // 6 GIỜ
 
     else if (
         currentTimeRange === "6h"
@@ -1024,8 +843,6 @@ function getFilteredData() {
     }
 
 
-    // 24 GIỜ
-
     else if (
         currentTimeRange === "24h"
     ) {
@@ -1038,8 +855,6 @@ function getFilteredData() {
 
     }
 
-
-    // 7 NGÀY
 
     else if (
         currentTimeRange === "7d"
@@ -1065,8 +880,10 @@ function getFilteredData() {
         function(item) {
 
             return (
+
                 item.time.getTime() >=
                 startTime
+
             );
 
         }
@@ -1089,8 +906,6 @@ function changeTimeRange(
         range;
 
 
-    // Xóa trạng thái active cũ
-
     const buttons =
         document.querySelectorAll(
             ".time-button"
@@ -1110,11 +925,7 @@ function changeTimeRange(
     );
 
 
-    // Thêm active mới
-
-    if (
-        button
-    ) {
+    if (button) {
 
         button.classList.add(
             "active"
@@ -1123,84 +934,13 @@ function changeTimeRange(
     }
 
 
-    // Vẽ lại biểu đồ
-
     updateCharts();
 
 }
 
 
 // =====================================================
-// RÚT GỌN DỮ LIỆU BIỂU ĐỒ
-//
-// Tránh hàng nghìn điểm dữ liệu
-// =====================================================
-
-function reduceChartData(
-    data,
-    maxPoints = 300
-) {
-
-    if (
-        data.length <= maxPoints
-    ) {
-
-        return data;
-
-    }
-
-
-    const step =
-        Math.ceil(
-            data.length /
-            maxPoints
-        );
-
-
-    const result = [];
-
-
-    for (
-        let i = 0;
-        i < data.length;
-        i += step
-    ) {
-
-        result.push(
-            data[i]
-        );
-
-    }
-
-
-    // Luôn giữ điểm cuối
-
-    const lastItem =
-        data[
-            data.length - 1
-        ];
-
-
-    if (
-        result[
-            result.length - 1
-        ] !== lastItem
-    ) {
-
-        result.push(
-            lastItem
-        );
-
-    }
-
-
-    return result;
-
-}
-
-
-// =====================================================
-// ĐỊNH DẠNG THỜI GIAN BIỂU ĐỒ
+// RÚT GỌN NHÃN THỜI GIAN
 // =====================================================
 
 function formatChartTime(
@@ -1208,26 +948,25 @@ function formatChartTime(
 ) {
 
     if (
+
         currentTimeRange === "7d" ||
         currentTimeRange === "all"
+
     ) {
 
         return date.toLocaleString(
+
             "vi-VN",
 
             {
 
-                day:
-                    "2-digit",
+                day: "2-digit",
 
-                month:
-                    "2-digit",
+                month: "2-digit",
 
-                hour:
-                    "2-digit",
+                hour: "2-digit",
 
-                minute:
-                    "2-digit"
+                minute: "2-digit"
 
             }
 
@@ -1242,107 +981,15 @@ function formatChartTime(
 
         {
 
-            hour:
-                "2-digit",
+            hour: "2-digit",
 
-            minute:
-                "2-digit",
+            minute: "2-digit",
 
-            second:
-                "2-digit"
+            second: "2-digit"
 
         }
 
     );
-
-}
-
-
-// =====================================================
-// TÍNH GIỚI HẠN TRỤC Y
-// =====================================================
-
-function calculateYAxis(
-    values,
-    minimumPadding
-) {
-
-    const validValues =
-        values.filter(
-            Number.isFinite
-        );
-
-
-    if (
-        validValues.length === 0
-    ) {
-
-        return {
-
-            min: 0,
-
-            max: 100
-
-        };
-
-    }
-
-
-    const minimum =
-        Math.min(
-            ...validValues
-        );
-
-
-    const maximum =
-        Math.max(
-            ...validValues
-        );
-
-
-    let range =
-        maximum -
-        minimum;
-
-
-    if (
-        range === 0
-    ) {
-
-        range =
-            minimumPadding * 2;
-
-    }
-
-
-    const padding =
-        Math.max(
-
-            minimumPadding,
-
-            range * 0.15
-
-        );
-
-
-    return {
-
-        min:
-
-            Math.floor(
-                minimum -
-                padding
-            ),
-
-
-        max:
-
-            Math.ceil(
-                maximum +
-                padding
-            )
-
-    };
 
 }
 
@@ -1353,7 +1000,7 @@ function calculateYAxis(
 
 function updateCharts() {
 
-    let filteredData =
+    const filteredData =
         getFilteredData();
 
 
@@ -1361,23 +1008,14 @@ function updateCharts() {
         filteredData.length === 0
     ) {
 
+        console.log(
+            "Không có dữ liệu để vẽ biểu đồ."
+        );
+
         return;
 
     }
 
-
-    // Rút gọn dữ liệu nếu quá nhiều điểm
-
-    filteredData =
-        reduceChartData(
-            filteredData,
-            300
-        );
-
-
-    // =============================================
-    // NHÃN THỜI GIAN
-    // =============================================
 
     const labels =
         filteredData.map(
@@ -1393,57 +1031,23 @@ function updateCharts() {
         );
 
 
-    // =============================================
-    // CO2
-    // =============================================
-
     const co2Data =
         filteredData.map(
-
-            function(item) {
-
-                return item.co2;
-
-            }
-
+            item => item.co2
         );
 
-
-    // =============================================
-    // PM2.5
-    // =============================================
 
     const pm25Data =
         filteredData.map(
-
-            function(item) {
-
-                return item.pm25;
-
-            }
-
+            item => item.pm25
         );
 
-
-    // =============================================
-    // SỐ NGƯỜI
-    // =============================================
 
     const peopleData =
         filteredData.map(
-
-            function(item) {
-
-                return item.people;
-
-            }
-
+            item => item.people
         );
 
-
-    // =============================================
-    // VẼ BIỂU ĐỒ
-    // =============================================
 
     createCo2Chart(
         labels,
@@ -1474,210 +1078,146 @@ function createCo2Chart(
     data
 ) {
 
-    const canvas =
-        document.getElementById(
-            "co2Chart"
-        );
+    const context =
+        document
+            .getElementById(
+                "co2Chart"
+            )
+            .getContext("2d");
 
 
-    if (
-        !canvas ||
-        typeof Chart === "undefined"
-    ) {
-
-        return;
-
-    }
-
-
-    if (
-        co2Chart
-    ) {
+    if (co2Chart) {
 
         co2Chart.destroy();
 
     }
 
 
-    const yAxis =
-        calculateYAxis(
-            data,
-            50
+    const minValue =
+        Math.min(...data);
+
+
+    const maxValue =
+        Math.max(...data);
+
+
+    const padding =
+        Math.max(
+
+            50,
+
+            (
+                maxValue -
+                minValue
+            ) * 0.15
+
         );
 
 
     co2Chart =
         new Chart(
 
-            canvas,
+            context,
 
             {
 
-                type:
-                    "line",
+                type: "line",
 
+                data: {
 
-                data:
+                    labels: labels,
 
-                    {
+                    datasets: [
 
-                        labels:
-                            labels,
+                        {
 
+                            label:
+                                "CO₂ (ppm)",
 
-                        datasets:
+                            data: data,
 
-                            [
+                            borderWidth: 2,
 
-                                {
+                            tension: 0.3,
 
-                                    label:
-                                        "CO₂ (ppm)",
+                            pointRadius: 2,
 
-                                    data:
-                                        data,
+                            pointHoverRadius: 5,
 
-                                    borderWidth:
-                                        2,
+                            fill: false
 
-                                    tension:
-                                        0.3,
+                        }
 
-                                    pointRadius:
-                                        0
+                    ]
 
-                                },
+                },
 
+                options: {
 
-                                {
+                    responsive: true,
 
-                                    label:
-                                        "Ngưỡng chú ý (800 ppm)",
+                    maintainAspectRatio:
+                        true,
 
-                                    data:
+                    plugins: {
 
-                                        labels.map(
-                                            () => 800
-                                        ),
+                        legend: {
 
-                                    borderDash:
-                                        [5, 5],
+                            display: true
 
-                                    borderWidth:
-                                        1,
-
-                                    pointRadius:
-                                        0
-
-                                },
-
-
-                                {
-
-                                    label:
-                                        "Ngưỡng cảnh báo (1000 ppm)",
-
-                                    data:
-
-                                        labels.map(
-                                            () => 1000
-                                        ),
-
-                                    borderDash:
-                                        [5, 5],
-
-                                    borderWidth:
-                                        1,
-
-                                    pointRadius:
-                                        0
-
-                                }
-
-                            ]
+                        }
 
                     },
 
+                    scales: {
 
-                options:
+                        x: {
 
-                    {
+                            ticks: {
 
-                        responsive:
-                            true,
+                                maxTicksLimit: 10,
 
+                                maxRotation: 0,
 
-                        maintainAspectRatio:
-                            false,
-
-
-                        interaction:
-
-                            {
-
-                                mode:
-                                    "index",
-
-                                intersect:
-                                    false
-
-                            },
-
-
-                        scales:
-
-                            {
-
-                                x:
-
-                                    {
-
-                                        ticks:
-
-                                            {
-
-                                                maxTicksLimit:
-                                                    10,
-
-                                                maxRotation:
-                                                    0,
-
-                                                autoSkip:
-                                                    true
-
-                                            }
-
-                                    },
-
-
-                                y:
-
-                                    {
-
-                                        min:
-                                            yAxis.min,
-
-                                        max:
-                                            yAxis.max,
-
-
-                                        title:
-
-                                            {
-
-                                                display:
-                                                    true,
-
-                                                text:
-                                                    "ppm"
-
-                                            }
-
-                                    }
+                                autoSkip: true
 
                             }
 
+                        },
+
+                        y: {
+
+                            beginAtZero: false,
+
+                            suggestedMin:
+
+                                Math.floor(
+
+                                    (
+                                        minValue -
+                                        padding
+                                    ) /
+                                    50
+
+                                ) * 50,
+
+                            suggestedMax:
+
+                                Math.ceil(
+
+                                    (
+                                        maxValue +
+                                        padding
+                                    ) /
+                                    50
+
+                                ) * 50
+
+                        }
+
                     }
+
+                }
 
             }
 
@@ -1695,192 +1235,138 @@ function createPm25Chart(
     data
 ) {
 
-    const canvas =
-        document.getElementById(
-            "pm25Chart"
-        );
+    const context =
+        document
+            .getElementById(
+                "pm25Chart"
+            )
+            .getContext("2d");
 
 
-    if (
-        !canvas ||
-        typeof Chart === "undefined"
-    ) {
-
-        return;
-
-    }
-
-
-    if (
-        pm25Chart
-    ) {
+    if (pm25Chart) {
 
         pm25Chart.destroy();
 
     }
 
 
-    const yAxis =
-        calculateYAxis(
-            data,
-            3
+    const minValue =
+        Math.min(...data);
+
+
+    const maxValue =
+        Math.max(...data);
+
+
+    const padding =
+        Math.max(
+
+            2,
+
+            (
+                maxValue -
+                minValue
+            ) * 0.15
+
         );
 
 
     pm25Chart =
         new Chart(
 
-            canvas,
+            context,
 
             {
 
-                type:
-                    "line",
+                type: "line",
 
+                data: {
 
-                data:
+                    labels: labels,
 
-                    {
+                    datasets: [
 
-                        labels:
-                            labels,
+                        {
 
+                            label:
+                                "PM2.5 (µg/m³)",
 
-                        datasets:
+                            data: data,
 
-                            [
+                            borderWidth: 2,
 
-                                {
+                            tension: 0.3,
 
-                                    label:
-                                        "PM2.5 (µg/m³)",
+                            pointRadius: 2,
 
-                                    data:
-                                        data,
+                            pointHoverRadius: 5,
 
-                                    borderWidth:
-                                        2,
+                            fill: false
 
-                                    tension:
-                                        0.3,
+                        }
 
-                                    pointRadius:
-                                        0
+                    ]
 
-                                },
+                },
 
+                options: {
 
-                                {
+                    responsive: true,
 
-                                    label:
-                                        "Ngưỡng cảnh báo (12 µg/m³)",
+                    maintainAspectRatio:
+                        true,
 
-                                    data:
+                    plugins: {
 
-                                        labels.map(
-                                            () => 12
-                                        ),
+                        legend: {
 
-                                    borderDash:
-                                        [5, 5],
+                            display: true
 
-                                    borderWidth:
-                                        1,
-
-                                    pointRadius:
-                                        0
-
-                                }
-
-                            ]
+                        }
 
                     },
 
+                    scales: {
 
-                options:
+                        x: {
 
-                    {
+                            ticks: {
 
-                        responsive:
-                            true,
+                                maxTicksLimit: 10,
 
+                                maxRotation: 0,
 
-                        maintainAspectRatio:
-                            false,
-
-
-                        interaction:
-
-                            {
-
-                                mode:
-                                    "index",
-
-                                intersect:
-                                    false
-
-                            },
-
-
-                        scales:
-
-                            {
-
-                                x:
-
-                                    {
-
-                                        ticks:
-
-                                            {
-
-                                                maxTicksLimit:
-                                                    10,
-
-                                                maxRotation:
-                                                    0,
-
-                                                autoSkip:
-                                                    true
-
-                                            }
-
-                                    },
-
-
-                                y:
-
-                                    {
-
-                                        min:
-
-                                            Math.max(
-                                                0,
-                                                yAxis.min
-                                            ),
-
-
-                                        max:
-                                            yAxis.max,
-
-
-                                        title:
-
-                                            {
-
-                                                display:
-                                                    true,
-
-                                                text:
-                                                    "µg/m³"
-
-                                            }
-
-                                    }
+                                autoSkip: true
 
                             }
 
+                        },
+
+                        y: {
+
+                            beginAtZero: false,
+
+                            suggestedMin:
+
+                                Math.max(
+
+                                    0,
+
+                                    minValue -
+                                    padding
+
+                                ),
+
+                            suggestedMax:
+
+                                maxValue +
+                                padding
+
+                        }
+
                     }
+
+                }
 
             }
 
@@ -1898,25 +1384,15 @@ function createPeopleChart(
     data
 ) {
 
-    const canvas =
-        document.getElementById(
-            "peopleChart"
-        );
+    const context =
+        document
+            .getElementById(
+                "peopleChart"
+            )
+            .getContext("2d");
 
 
-    if (
-        !canvas ||
-        typeof Chart === "undefined"
-    ) {
-
-        return;
-
-    }
-
-
-    if (
-        peopleChart
-    ) {
+    if (peopleChart) {
 
         peopleChart.destroy();
 
@@ -1926,160 +1402,90 @@ function createPeopleChart(
     peopleChart =
         new Chart(
 
-            canvas,
+            context,
 
             {
 
-                type:
-                    "line",
+                type: "line",
 
+                data: {
 
-                data:
+                    labels: labels,
 
-                    {
+                    datasets: [
 
-                        labels:
-                            labels,
+                        {
 
+                            label:
+                                "Số người",
 
-                        datasets:
+                            data: data,
 
-                            [
+                            borderWidth: 2,
 
-                                {
+                            tension: 0.2,
 
-                                    label:
-                                        "Số người",
+                            pointRadius: 2,
 
-                                    data:
-                                        data,
+                            pointHoverRadius: 5,
 
-                                    borderWidth:
-                                        2,
+                            fill: false
 
-                                    tension:
-                                        0.2,
+                        }
 
-                                    pointRadius:
-                                        0
+                    ]
 
-                                },
+                },
 
+                options: {
 
-                                {
+                    responsive: true,
 
-                                    label:
-                                        "Ngưỡng đông người (20 người)",
+                    maintainAspectRatio:
+                        true,
 
-                                    data:
+                    plugins: {
 
-                                        labels.map(
-                                            () => 20
-                                        ),
+                        legend: {
 
-                                    borderDash:
-                                        [5, 5],
+                            display: true
 
-                                    borderWidth:
-                                        1,
-
-                                    pointRadius:
-                                        0
-
-                                }
-
-                            ]
+                        }
 
                     },
 
+                    scales: {
 
-                options:
+                        x: {
 
-                    {
+                            ticks: {
 
-                        responsive:
-                            true,
+                                maxTicksLimit: 10,
 
+                                maxRotation: 0,
 
-                        maintainAspectRatio:
-                            false,
-
-
-                        interaction:
-
-                            {
-
-                                mode:
-                                    "index",
-
-                                intersect:
-                                    false
-
-                            },
-
-
-                        scales:
-
-                            {
-
-                                x:
-
-                                    {
-
-                                        ticks:
-
-                                            {
-
-                                                maxTicksLimit:
-                                                    10,
-
-                                                maxRotation:
-                                                    0,
-
-                                                autoSkip:
-                                                    true
-
-                                            }
-
-                                    },
-
-
-                                y:
-
-                                    {
-
-                                        beginAtZero:
-                                            true,
-
-
-                                        ticks:
-
-                                            {
-
-                                                precision:
-                                                    0
-
-                                            },
-
-
-                                        title:
-
-                                            {
-
-                                                display:
-                                                    true,
-
-                                                text:
-                                                    "Người"
-
-                                            }
-
-                                    }
+                                autoSkip: true
 
                             }
 
+                        },
+
+                        y: {
+
+                            beginAtZero: true,
+
+                            ticks: {
+
+                                precision: 0
+
+                            }
+
+                        }
+
                     }
 
+                }
+
             }
 
         );
@@ -2088,76 +1494,30 @@ function createPeopleChart(
 
 
 // =====================================================
-// GỬI LỆNH ĐẾN GOOGLE APPS SCRIPT
-// =====================================================
-
-async function sendCommand(
-    data
-) {
-
-    const response =
-        await fetch(
-
-            SCRIPT_URL,
-
-            {
-
-                method:
-                    "POST",
-
-
-                headers:
-
-                    {
-
-                        "Content-Type":
-                            "text/plain;charset=utf-8"
-
-                    },
-
-
-                body:
-
-                    JSON.stringify(
-                        data
-                    )
-
-            }
-
-        );
-
-
-    return await response.text();
-
-}
-
-
-// =====================================================
-// HIỆU CHỈNH SỐ NGƯỜI
+// CẬP NHẬT SỐ NGƯỜI
 // =====================================================
 
 async function updatePeople() {
 
-    const input =
-        document.getElementById(
-            "peopleInput"
-        );
-
-
     const people =
         parseInt(
-            input.value,
-            10
+
+            document.getElementById(
+                "peopleInput"
+            ).value
+
         );
 
 
     if (
-        !Number.isFinite(people) ||
+
+        isNaN(people) ||
         people < 0
+
     ) {
 
         alert(
-            "Số người không hợp lệ!"
+            "Vui lòng nhập số người hợp lệ."
         );
 
         return;
@@ -2167,61 +1527,58 @@ async function updatePeople() {
 
     try {
 
-        const result =
-            await sendCommand(
+        const response =
+            await fetch(
+
+                SCRIPT_URL,
 
                 {
 
-                    action:
-                        "set_people",
+                    method: "POST",
 
-                    so_nguoi:
-                        people
+                    headers: {
+
+                        "Content-Type":
+                            "text/plain;charset=utf-8"
+
+                    },
+
+                    body:
+
+                        JSON.stringify({
+
+                            action:
+                                "set_people",
+
+                            so_nguoi:
+                                people
+
+                        })
 
                 }
 
             );
 
 
-        console.log(
-            "Phản hồi:",
-            result
-        );
+        const result =
+            await response.text();
 
 
-        document.getElementById(
-            "people"
-        ).textContent =
-            people;
+        console.log(result);
 
 
         alert(
-            "✅ Đã gửi lệnh cập nhật số người: " +
-            people
+            "✅ Đã gửi lệnh cập nhật số người!"
         );
 
 
-        // Tải lại dữ liệu sau khi Apps Script xử lý
+    } catch (error) {
 
-        setTimeout(
-
-            loadData,
-
-            3000
-
-        );
-
-    }
-
-    catch (error) {
-
-        console.error(
-            error
-        );
+        console.error(error);
 
 
         alert(
-            "❌ Không thể cập nhật số người!"
+            "❌ Không thể gửi lệnh."
         );
 
     }
@@ -2230,48 +1587,26 @@ async function updatePeople() {
 
 
 // =====================================================
-// ĐẶT CHẾ ĐỘ LED
+// ĐIỀU KHIỂN CHẾ ĐỘ LED
 // =====================================================
 
 async function setLedMode(
     mode
 ) {
 
-    currentLedMode =
-        mode;
-
-
     try {
 
-        const result =
-            await sendCommand(
+        await sendLedCommand({
 
-                {
+            mode: mode,
 
-                    action:
-                        "set_led",
+            red: "OFF",
 
-                    mode:
-                        currentLedMode,
+            yellow: "OFF",
 
-                    red:
-                        ledState.red,
+            green: "OFF"
 
-                    yellow:
-                        ledState.yellow,
-
-                    green:
-                        ledState.green
-
-                }
-
-            );
-
-
-        console.log(
-            "Phản hồi LED:",
-            result
-        );
+        });
 
 
         alert(
@@ -2279,17 +1614,14 @@ async function setLedMode(
             mode
         );
 
-    }
 
-    catch (error) {
+    } catch (error) {
 
-        console.error(
-            error
-        );
+        console.error(error);
 
 
         alert(
-            "❌ Không thể điều khiển LED!"
+            "❌ Không thể điều khiển LED."
         );
 
     }
@@ -2306,85 +1638,103 @@ async function setLed(
     state
 ) {
 
-    if (
-        ![
-            "red",
-            "yellow",
-            "green"
-        ].includes(color)
-    ) {
+    const command = {
 
-        return;
+        mode: "MANUAL",
 
-    }
+        red: "OFF",
 
+        yellow: "OFF",
 
-    // Chuyển sang chế độ thủ công
+        green: "OFF"
 
-    currentLedMode =
-        "MANUAL";
+    };
 
 
-    // Chỉ thay đổi LED được chọn
-
-    ledState[color] =
+    command[color] =
         state;
 
 
     try {
 
-        const result =
-            await sendCommand(
-
-                {
-
-                    action:
-                        "set_led",
-
-                    mode:
-                        currentLedMode,
-
-                    red:
-                        ledState.red,
-
-                    yellow:
-                        ledState.yellow,
-
-                    green:
-                        ledState.green
-
-                }
-
-            );
-
-
-        console.log(
-            "Phản hồi LED:",
-            result
+        await sendLedCommand(
+            command
         );
 
 
         alert(
-            "💡 Đã gửi lệnh: LED " +
+            "💡 Đã gửi lệnh " +
             color +
-            " = " +
+            " " +
             state
         );
 
-    }
 
-    catch (error) {
+    } catch (error) {
 
-        console.error(
-            error
-        );
+        console.error(error);
 
 
         alert(
-            "❌ Không thể gửi lệnh LED!"
+            "❌ Không thể gửi lệnh LED."
         );
 
     }
+
+}
+
+
+// =====================================================
+// GỬI LỆNH LED
+// =====================================================
+
+async function sendLedCommand(
+    command
+) {
+
+    const response =
+        await fetch(
+
+            SCRIPT_URL,
+
+            {
+
+                method: "POST",
+
+                headers: {
+
+                    "Content-Type":
+                        "text/plain;charset=utf-8"
+
+                },
+
+                body:
+
+                    JSON.stringify({
+
+                        action:
+                            "set_led",
+
+                        mode:
+                            command.mode,
+
+                        red:
+                            command.red,
+
+                        yellow:
+                            command.yellow,
+
+                        green:
+                            command.green
+
+                    })
+
+            }
+
+        );
+
+
+    return await response.text();
 
 }
 
@@ -2397,13 +1747,13 @@ loadData();
 
 
 // =====================================================
-// TỰ ĐỘNG CẬP NHẬT
+// TỰ ĐỘNG CẬP NHẬT DỮ LIỆU
 // =====================================================
 
 setInterval(
 
     loadData,
 
-    30000
+    60000
 
 );
