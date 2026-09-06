@@ -1,0 +1,538 @@
+/* =====================================================
+   THIẾT LẬP CHUNG
+===================================================== */
+
+* {
+    box-sizing: border-box;
+}
+
+
+body {
+
+    margin: 0;
+
+    font-family:
+        Arial,
+        sans-serif;
+
+    background:
+        linear-gradient(
+            135deg,
+            #eef3ff,
+            #e7edff
+        );
+
+    color: #1f2937;
+
+}
+
+
+/* =====================================================
+   HEADER
+===================================================== */
+
+header {
+
+    background:
+        linear-gradient(
+            135deg,
+            #1e3a8a,
+            #4f46e5
+        );
+
+    color: white;
+
+    padding: 30px;
+
+    box-shadow:
+        0 4px 15px
+        rgba(0, 0, 0, 0.15);
+
+}
+
+
+.header-content {
+
+    max-width: 1200px;
+
+    margin: auto;
+
+}
+
+
+header h1 {
+
+    margin: 0;
+
+    font-size: 28px;
+
+}
+
+
+header p {
+
+    margin-top: 10px;
+
+    opacity: 0.85;
+
+}
+
+
+/* =====================================================
+   KHU VỰC CHÍNH
+===================================================== */
+
+main {
+
+    max-width: 1200px;
+
+    margin: auto;
+
+    padding: 25px;
+
+}
+
+
+/* =====================================================
+   THỜI GIAN CẬP NHẬT
+===================================================== */
+
+.update-time {
+
+    background: white;
+
+    padding: 15px 20px;
+
+    border-radius: 12px;
+
+    margin-bottom: 25px;
+
+    box-shadow:
+        0 4px 12px
+        rgba(0, 0, 0, 0.08);
+
+    font-weight: bold;
+
+}
+
+
+/* =====================================================
+   LƯỚI THÔNG SỐ
+===================================================== */
+
+.data-grid {
+
+    display: grid;
+
+    grid-template-columns:
+        repeat(
+            auto-fit,
+            minmax(200px, 1fr)
+        );
+
+    gap: 20px;
+
+    margin-bottom: 30px;
+
+}
+
+
+/* =====================================================
+   THẺ THÔNG SỐ
+===================================================== */
+
+.data-card {
+
+    background: white;
+
+    border-radius: 16px;
+
+    padding: 25px;
+
+    text-align: center;
+
+    box-shadow:
+        0 6px 18px
+        rgba(0, 0, 0, 0.08);
+
+    transition:
+        transform 0.2s,
+        box-shadow 0.2s;
+
+}
+
+
+.data-card:hover {
+
+    transform:
+        translateY(-5px);
+
+    box-shadow:
+        0 10px 25px
+        rgba(0, 0, 0, 0.15);
+
+}
+
+
+.icon {
+
+    font-size: 35px;
+
+    margin-bottom: 10px;
+
+}
+
+
+.data-card h3 {
+
+    margin: 10px 0;
+
+    color: #64748b;
+
+    font-size: 16px;
+
+}
+
+
+.value {
+
+    font-size: 34px;
+
+    font-weight: bold;
+
+    color: #1e293b;
+
+}
+
+
+.unit {
+
+    color: #64748b;
+
+    margin-top: 5px;
+
+}
+
+
+/* =====================================================
+   TRẠNG THÁI KHÔNG KHÍ
+===================================================== */
+
+.status-section {
+
+    background: white;
+
+    padding: 25px;
+
+    border-radius: 16px;
+
+    margin-bottom: 30px;
+
+    box-shadow:
+        0 6px 18px
+        rgba(0, 0, 0, 0.08);
+
+}
+
+
+.status-section h2 {
+
+    margin-top: 0;
+
+}
+
+
+.air-status {
+
+    padding: 20px;
+
+    border-radius: 12px;
+
+    font-size: 20px;
+
+    font-weight: bold;
+
+    background: #f1f5f9;
+
+}
+
+
+/* =====================================================
+   KHU VỰC ĐIỀU KHIỂN
+===================================================== */
+
+.control-section {
+
+    background: white;
+
+    padding: 25px;
+
+    border-radius: 16px;
+
+    margin-bottom: 30px;
+
+    box-shadow:
+        0 6px 18px
+        rgba(0, 0, 0, 0.08);
+
+}
+
+
+.control-section h2 {
+
+    margin-top: 0;
+
+}
+
+
+/* =====================================================
+   ĐIỀU KHIỂN SỐ NGƯỜI
+===================================================== */
+
+.people-control {
+
+    display: flex;
+
+    gap: 15px;
+
+    flex-wrap: wrap;
+
+}
+
+
+.people-control input {
+
+    width: 180px;
+
+    padding: 12px;
+
+    font-size: 18px;
+
+    border-radius: 8px;
+
+    border:
+        1px solid #cbd5e1;
+
+}
+
+
+.people-control button {
+
+    padding:
+        12px
+        25px;
+
+    border: none;
+
+    border-radius: 8px;
+
+    background: #2563eb;
+
+    color: white;
+
+    font-size: 16px;
+
+    cursor: pointer;
+
+}
+
+
+.people-control button:hover {
+
+    background: #1d4ed8;
+
+}
+
+
+/* =====================================================
+   CHẾ ĐỘ LED
+===================================================== */
+
+.led-mode {
+
+    display: flex;
+
+    gap: 15px;
+
+    margin-bottom: 25px;
+
+    flex-wrap: wrap;
+
+}
+
+
+.led-mode button {
+
+    padding:
+        12px
+        25px;
+
+    border: none;
+
+    border-radius: 8px;
+
+    background: #475569;
+
+    color: white;
+
+    font-size: 16px;
+
+    cursor: pointer;
+
+}
+
+
+.led-mode button:hover {
+
+    background: #334155;
+
+}
+
+
+/* =====================================================
+   ĐIỀU KHIỂN TỪNG LED
+===================================================== */
+
+.led-control {
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 15px;
+
+    padding: 15px;
+
+    margin-bottom: 10px;
+
+    background: #f8fafc;
+
+    border-radius: 10px;
+
+    flex-wrap: wrap;
+
+}
+
+
+.led-control span {
+
+    font-weight: bold;
+
+    min-width: 150px;
+
+}
+
+
+.led-control button {
+
+    padding:
+        10px
+        20px;
+
+    border: none;
+
+    border-radius: 8px;
+
+    color: white;
+
+    cursor: pointer;
+
+}
+
+
+/* NÚT BẬT */
+
+.led-control button:nth-of-type(1) {
+
+    background: #16a34a;
+
+}
+
+
+/* NÚT TẮT */
+
+.led-control button:nth-of-type(2) {
+
+    background: #dc2626;
+
+}
+
+
+/* =====================================================
+   KHU VỰC BIỂU ĐỒ
+===================================================== */
+
+.chart-section {
+
+    background: white;
+
+    padding: 25px;
+
+    border-radius: 16px;
+
+    margin-bottom: 30px;
+
+    box-shadow:
+        0 6px 18px
+        rgba(0, 0, 0, 0.08);
+
+}
+
+
+/* =====================================================
+   RESPONSIVE CHO ĐIỆN THOẠI
+===================================================== */
+
+@media
+(
+    max-width: 600px
+) {
+
+    header {
+
+        padding: 20px;
+
+    }
+
+
+    header h1 {
+
+        font-size: 21px;
+
+    }
+
+
+    main {
+
+        padding: 15px;
+
+    }
+
+
+    .data-grid {
+
+        grid-template-columns:
+            repeat(
+                2,
+                1fr
+            );
+
+        gap: 12px;
+
+    }
+
+
+    .data-card {
+
+        padding: 15px;
+
+    }
+
+
+    .value {
+
+        font-size: 28px;
+
+    }
+
+}
