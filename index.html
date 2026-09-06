@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>
+        Hệ thống giám sát chất lượng không khí
+    </title>
+
+    <link
+        rel="stylesheet"
+        href="style.css"
+    >
+
+</head>
+
+
+<body>
+
+    <!-- =========================
+         HEADER
+    ========================== -->
+
+    <header>
+
+        <div class="header-content">
+
+            <h1>
+                🌿 HỆ THỐNG GIÁM SÁT CHẤT LƯỢNG KHÔNG KHÍ
+            </h1>
+
+            <p>
+                Dự án nghiên cứu khoa học kỹ thuật
+            </p>
+
+        </div>
+
+    </header>
+
+
+    <!-- =========================
+         MAIN DASHBOARD
+    ========================== -->
+
+    <main>
+
+
+        <!-- =====================
+             THỜI GIAN CẬP NHẬT
+        ====================== -->
+
+        <section class="update-time">
+
+            🕒 Cập nhật lần cuối:
+
+            <span id="lastUpdate">
+                Đang tải dữ liệu...
+            </span>
+
+        </section>
+
+
+        <!-- =====================
+             CÁC THÔNG SỐ
+        ====================== -->
+
+        <section class="data-grid">
+
+
+            <!-- NHIỆT ĐỘ -->
+
+            <div class="data-card">
+
+                <div class="icon">
+                    🌡️
+                </div>
+
+                <h3>
+                    Nhiệt độ
+                </h3>
+
+                <div
+                    class="value"
+                    id="temperature"
+                >
+                    --
+                </div>
+
+                <div class="unit">
+                    °C
+                </div>
+
+            </div>
+
+
+            <!-- ĐỘ ẨM -->
+
+            <div class="data-card">
+
+                <div class="icon">
+                    💧
+                </div>
+
+                <h3>
+                    Độ ẩm
+                </h3>
+
+                <div
+                    class="value"
+                    id="humidity"
+                >
+                    --
+                </div>
+
+                <div class="unit">
+                    %
+                </div>
+
+            </div>
+
+
+            <!-- CO2 -->
+
+            <div class="data-card">
+
+                <div class="icon">
+                    🫁
+                </div>
+
+                <h3>
+                    CO₂
+                </h3>
+
+                <div
+                    class="value"
+                    id="co2"
+                >
+                    --
+                </div>
+
+                <div class="unit">
+                    ppm
+                </div>
+
+            </div>
+
+
+            <!-- PM2.5 -->
+
+            <div class="data-card">
+
+                <div class="icon">
+                    🌫️
+                </div>
+
+                <h3>
+                    PM2.5
+                </h3>
+
+                <div
+                    class="value"
+                    id="pm25"
+                >
+                    --
+                </div>
+
+                <div class="unit">
+                    µg/m³
+                </div>
+
+            </div>
+
+
+            <!-- SỐ NGƯỜI -->
+
+            <div class="data-card">
+
+                <div class="icon">
+                    👥
+                </div>
+
+                <h3>
+                    Số người
+                </h3>
+
+                <div
+                    class="value"
+                    id="people"
+                >
+                    --
+                </div>
+
+                <div class="unit">
+                    người
+                </div>
+
+            </div>
+
+
+        </section>
+
+
+        <!-- =====================
+             TRẠNG THÁI KHÔNG KHÍ
+        ====================== -->
+
+        <section class="status-section">
+
+            <h2>
+                🚦 TRẠNG THÁI CHẤT LƯỢNG KHÔNG KHÍ
+            </h2>
+
+
+            <div
+                class="air-status"
+                id="airStatus"
+            >
+
+                Đang phân tích dữ liệu...
+
+            </div>
+
+        </section>
+
+
+        <!-- =====================
+             ĐIỀU KHIỂN SỐ NGƯỜI
+        ====================== -->
+
+        <section class="control-section">
+
+            <h2>
+                👥 HIỆU CHỈNH SỐ NGƯỜI
+            </h2>
+
+
+            <div class="people-control">
+
+                <input
+                    type="number"
+                    id="peopleInput"
+                    min="0"
+                    value="0"
+                >
+
+
+                <button
+                    onclick="updatePeople()"
+                >
+
+                    📤 CẬP NHẬT
+
+                </button>
+
+            </div>
+
+        </section>
+
+
+        <!-- =====================
+             ĐIỀU KHIỂN LED
+        ====================== -->
+
+        <section class="control-section">
+
+            <h2>
+                💡 ĐIỀU KHIỂN ĐÈN LED
+            </h2>
+
+
+            <!-- CHẾ ĐỘ -->
+
+            <div class="led-mode">
+
+                <button
+                    onclick="setLedMode('AUTO')"
+                >
+
+                    🤖 AUTO
+
+                </button>
+
+
+                <button
+                    onclick="setLedMode('MANUAL')"
+                >
+
+                    🎛️ MANUAL
+
+                </button>
+
+            </div>
+
+
+            <!-- LED ĐỎ -->
+
+            <div class="led-control">
+
+                <span>
+                    🔴 LED Đỏ
+                </span>
+
+
+                <button
+                    onclick="setLed('red', 'ON')"
+                >
+                    BẬT
+                </button>
+
+
+                <button
+                    onclick="setLed('red', 'OFF')"
+                >
+                    TẮT
+                </button>
+
+            </div>
+
+
+            <!-- LED VÀNG -->
+
+            <div class="led-control">
+
+                <span>
+                    🟡 LED Vàng
+                </span>
+
+
+                <button
+                    onclick="setLed('yellow', 'ON')"
+                >
+                    BẬT
+                </button>
+
+
+                <button
+                    onclick="setLed('yellow', 'OFF')"
+                >
+                    TẮT
+                </button>
+
+            </div>
+
+
+            <!-- LED XANH -->
+
+            <div class="led-control">
+
+                <span>
+                    🟢 LED Xanh
+                </span>
+
+
+                <button
+                    onclick="setLed('green', 'ON')"
+                >
+                    BẬT
+                </button>
+
+
+                <button
+                    onclick="setLed('green', 'OFF')"
+                >
+                    TẮT
+                </button>
+
+            </div>
+
+
+        </section>
+
+
+        <!-- =====================
+             BIỂU ĐỒ
+        ====================== -->
+
+        <section class="chart-section">
+
+            <h2>
+                📊 BIỂU ĐỒ DỮ LIỆU
+            </h2>
+
+            <p>
+                Biểu đồ CO₂, PM2.5 và số người sẽ được
+                tích hợp ở bước tiếp theo.
+            </p>
+
+        </section>
+
+
+    </main>
+
+
+    <!-- =========================
+         JAVASCRIPT
+    ========================== -->
+
+    <script
+        src="script.js"
+    ></script>
+
+
+</body>
+
+</html>
