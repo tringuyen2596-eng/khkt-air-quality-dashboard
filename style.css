@@ -536,3 +536,64 @@ main {
     }
 
 }
+/* ========================================
+   BỘ LỌC KHOẢNG THỜI GIAN BIỂU ĐỒ
+======================================== */
+
+.time-filter {
+
+    display: flex;
+
+    justify-content: center;
+
+    flex-wrap: wrap;
+
+    gap: 10px;
+
+    margin-top: 20px;
+
+    margin-bottom: 30px;
+
+}
+
+
+.time-button {
+
+    padding: 10px 18px;
+
+    border: none;
+
+    border-radius: 8px;
+
+    cursor: pointer;
+
+    font-size: 15px;
+
+    font-weight: bold;
+
+    transition: 0.2s;
+
+}
+
+
+.time-button:hover {
+
+    transform: translateY(-2px);
+
+}
+
+
+.time-button.active {
+
+    transform: scale(1.05);
+
+    box-shadow:
+        0 4px 10px
+        rgba(
+            0,
+            0,
+            0,
+            0.2
+        );
+
+}
