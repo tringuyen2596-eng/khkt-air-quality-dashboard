@@ -1898,144 +1898,105 @@ function formatChartTime(
 // Hai đường nằm trên cùng một trục thời gian.
 // AI sẽ "chạy trước" thực tế khoảng 10 phút.
 // =====================================================
+// =====================================================
+// BIỂU ĐỒ CO2 AI DỰ ĐOÁN + CO2 THỰC TẾ
+// =====================================================
+//
+// AI tại thời điểm t
+//      ↓
+// dự báo CO2 tại t + 10 phút
+//
+// 🔵 AI: nét đứt, xuất hiện trước
+// 🔴 Thực tế: nét liền, xuất hiện sau
+// =====================================================
 
 function updateAIChart() {
 
-    const canvas =
-        document.getElementById(
-            "aiCo2Chart"
-        );
-
+    const canvas = document.getElementById("aiCo2Chart");
 
     if (!canvas) {
-
-        console.warn(
-            "Không tìm thấy canvas aiCo2Chart."
-        );
-
+        console.warn("Không tìm thấy canvas aiCo2Chart.");
         return;
-
     }
 
 
-    // ---------------------------------------------
-    // Xóa biểu đồ cũ
-    // ---------------------------------------------
+    // -------------------------------------------------
+    // Hủy biểu đồ cũ
+    // -------------------------------------------------
 
     if (aiCo2Chart) {
-
         aiCo2Chart.destroy();
-
         aiCo2Chart = null;
-
     }
 
 
-    // ---------------------------------------------
-    // Lấy dữ liệu AI
-    // ---------------------------------------------
+    // -------------------------------------------------
+    // Lấy dữ liệu
+    // -------------------------------------------------
 
-    const points =
-        buildAIChartData();
+    const points = buildAIChartData();
 
-
-    if (
-        !points ||
-        points.length === 0
-    ) {
+    if (!points || points.length === 0) {
 
         console.warn(
-            "Không có dữ liệu để vẽ biểu đồ AI."
+            "Không có dữ liệu AI để vẽ biểu đồ."
         );
 
         return;
-
     }
 
 
-    // ---------------------------------------------
-    // Tạo dữ liệu AI
+    // -------------------------------------------------
+    // Dữ liệu AI
     //
-    // x = thời điểm AI đưa ra dự báo
-    // y = CO2 dự báo
-    // ---------------------------------------------
+    // x = thời điểm AI dự báo
+    // y = CO2 dự báo tại t + 10 phút
+    // -------------------------------------------------
 
-    const cleanAI =
-        points
-            .map(
-                function(point) {
+    const cleanAI = points
+        .map(function(point) {
 
-                    return {
+            return {
+                x: Number(point.aiTimeMs),
+                y: Number(point.prediction)
+            };
 
-                        x:
-                            Number(
-                                point.aiTimeMs
-                            ),
+        })
+        .filter(function(point) {
 
-                        y:
-                            Number(
-                                point.prediction
-                            )
-
-                    };
-
-                }
-            )
-            .filter(
-                function(point) {
-
-                    return (
-                        Number.isFinite(point.x) &&
-                        Number.isFinite(point.y)
-                    );
-
-                }
+            return (
+                Number.isFinite(point.x) &&
+                Number.isFinite(point.y)
             );
 
+        });
 
-    // ---------------------------------------------
-    // Tạo dữ liệu CO2 thực tế
+
+    // -------------------------------------------------
+    // Dữ liệu thực tế
     //
     // x = thời điểm CO2 thực tế xuất hiện
     // y = CO2 thực tế
-    // ---------------------------------------------
+    // -------------------------------------------------
 
-    const cleanActual =
-        points
-            .map(
-                function(point) {
+    const cleanActual = points
+        .map(function(point) {
 
-                    return {
+            return {
+                x: Number(point.actualTimeMs),
+                y: Number(point.actual)
+            };
 
-                        x:
-                            Number(
-                                point.actualTimeMs
-                            ),
+        })
+        .filter(function(point) {
 
-                        y:
-                            Number(
-                                point.actual
-                            )
-
-                    };
-
-                }
-            )
-            .filter(
-                function(point) {
-
-                    return (
-                        Number.isFinite(point.x) &&
-                        Number.isFinite(point.y)
-                    );
-
-                }
+            return (
+                Number.isFinite(point.x) &&
+                Number.isFinite(point.y)
             );
 
+        });
 
-    // ---------------------------------------------
-    // Không có dữ liệu hợp lệ
-    // ---------------------------------------------
 
     if (
         cleanAI.length === 0 &&
@@ -2043,421 +2004,290 @@ function updateAIChart() {
     ) {
 
         console.warn(
-            "Dữ liệu AI/CO2 thực tế không hợp lệ."
+            "Không có dữ liệu hợp lệ cho biểu đồ AI."
         );
 
         return;
-
     }
 
 
-    // ---------------------------------------------
-    // Tìm khoảng thời gian
-    // ---------------------------------------------
+    // -------------------------------------------------
+    // Khoảng thời gian
+    // -------------------------------------------------
 
     const allTimes =
         cleanAI
-            .map(
-                function(point) {
-                    return point.x;
-                }
-            )
+            .map(function(point) {
+                return point.x;
+            })
             .concat(
-                cleanActual.map(
-                    function(point) {
-                        return point.x;
-                    }
-                )
+                cleanActual.map(function(point) {
+                    return point.x;
+                })
             )
-            .filter(
-                function(value) {
-                    return Number.isFinite(value);
-                }
-            );
+            .filter(function(value) {
+                return Number.isFinite(value);
+            });
 
 
-    if (
-        allTimes.length === 0
-    ) {
-
-        return;
-
-    }
+    const minTime = Math.min(...allTimes);
+    const maxTime = Math.max(...allTimes);
 
 
-    const minTime =
-        Math.min(
-            ...allTimes
-        );
-
-
-    const maxTime =
-        Math.max(
-            ...allTimes
-        );
-
-
-    // ---------------------------------------------
+    // -------------------------------------------------
     // Tạo biểu đồ
-    // ---------------------------------------------
+    // -------------------------------------------------
 
-    aiCo2Chart =
-        new Chart(
-            canvas,
-            {
+    aiCo2Chart = new Chart(
+        canvas,
+        {
 
-                type:
-                    "line",
+            type: "line",
 
-                data:
+
+            data: {
+
+                datasets: [
+
+                    // =====================================
+                    // ĐƯỜNG AI
+                    // =====================================
+
                     {
+                        label: "CO₂ AI dự đoán",
 
-                        // QUAN TRỌNG:
-                        // Không dùng labels.
-                        //
-                        // Mỗi điểm có dạng:
-                        // { x: timestamp, y: CO2 }
+                        data: cleanAI,
 
-                        datasets:
-                            [
+                        borderColor: "#2196f3",
 
-                                // =================================
-                                // ĐƯỜNG AI
-                                // =================================
+                        backgroundColor: "#2196f3",
 
-                                {
+                        borderWidth: 3,
 
-                                    label:
-                                        "CO₂ AI dự đoán",
+                        borderDash: [8, 5],
 
-                                    data:
-                                        cleanAI,
+                        pointRadius: 2,
 
-                                    borderColor:
-                                        "#2196f3",
+                        pointHoverRadius: 5,
 
-                                    backgroundColor:
-                                        "#2196f3",
+                        tension: 0.2,
 
-                                    borderWidth:
-                                        3,
+                        fill: false,
 
-                                    tension:
-                                        0.2,
+                        spanGaps: true,
 
-                                    pointRadius:
-                                        2,
-
-                                    pointHoverRadius:
-                                        5,
-
-                                    fill:
-                                        false,
-
-                                    spanGaps:
-                                        true,
-
-                                    parsing:
-                                        false
-
-                                },
+                        parsing: false
+                    },
 
 
-                                // =================================
-                                // ĐƯỜNG THỰC TẾ
-                                // =================================
+                    // =====================================
+                    // ĐƯỜNG THỰC TẾ
+                    // =====================================
 
-                                {
+                    {
+                        label: "CO₂ thực tế",
 
-                                    label:
-                                        "CO₂ thực tế",
+                        data: cleanActual,
 
-                                    data:
-                                        cleanActual,
+                        borderColor: "#ef3b32",
 
-                                    borderColor:
-                                        "#ef3b32",
+                        backgroundColor: "#ef3b32",
 
-                                    backgroundColor:
-                                        "#ef3b32",
+                        borderWidth: 3,
 
-                                    borderWidth:
-                                        3,
+                        pointRadius: 2,
 
-                                    tension:
-                                        0.2,
+                        pointHoverRadius: 5,
 
-                                    pointRadius:
-                                        2,
+                        tension: 0.2,
 
-                                    pointHoverRadius:
-                                        5,
+                        fill: false,
 
-                                    fill:
-                                        false,
+                        spanGaps: true,
 
-                                    spanGaps:
-                                        true,
+                        parsing: false
+                    }
 
-                                    parsing:
-                                        false
+                ]
 
-                                }
+            },
 
-                            ]
+
+            options: {
+
+                responsive: true,
+
+                maintainAspectRatio: true,
+
+
+                interaction: {
+
+                    mode: "nearest",
+
+                    intersect: false
+
+                },
+
+
+                plugins: {
+
+                    // -------------------------------------
+                    // TẮT legend của Chart.js
+                    //
+                    // Vì index.html đã có legend riêng.
+                    // Tránh xuất hiện 2 legend.
+                    // -------------------------------------
+
+                    legend: {
+
+                        display: false
 
                     },
 
 
-                options:
-                    {
+                    // -------------------------------------
+                    // Tooltip
+                    // -------------------------------------
 
-                        responsive:
-                            true,
+                    tooltip: {
 
-                        maintainAspectRatio:
-                            true,
+                        enabled: true,
 
+                        callbacks: {
 
-                        // -----------------------------------------
-                        // Tương tác
-                        // -----------------------------------------
+                            title: function(tooltipItems) {
 
-                        interaction:
-                            {
+                                if (
+                                    !tooltipItems ||
+                                    tooltipItems.length === 0
+                                ) {
+                                    return "";
+                                }
 
-                                mode:
-                                    "nearest",
+                                const x =
+                                    tooltipItems[0].parsed.x;
 
-                                intersect:
-                                    false
+                                if (
+                                    !Number.isFinite(x)
+                                ) {
+                                    return "";
+                                }
 
+                                return new Date(x)
+                                    .toLocaleString(
+                                        "vi-VN"
+                                    );
                             },
 
 
-                        // -----------------------------------------
-                        // Chú thích + tooltip
-                        // -----------------------------------------
-
-                        plugins:
-                            {
-
-                                legend:
-                                    {
-
-                                        display:
-                                            true,
-
-                                        position:
-                                            "top"
-
-                                    },
-
-
-                                tooltip:
-                                    {
-
-                                        enabled:
-                                            true,
-
-
-                                        callbacks:
-                                            {
-
-                                                // -------------------------
-                                                // Thời gian
-                                                // -------------------------
-
-                                                title:
-                                                    function(
-                                                        tooltipItems
-                                                    ) {
-
-                                                        if (
-                                                            !tooltipItems ||
-                                                            tooltipItems.length === 0
-                                                        ) {
-
-                                                            return "";
-
-                                                        }
-
-
-                                                        const x =
-                                                            tooltipItems[0]
-                                                                .parsed
-                                                                .x;
-
-
-                                                        if (
-                                                            !Number.isFinite(x)
-                                                        ) {
-
-                                                            return "";
-
-                                                        }
-
-
-                                                        return new Date(
-                                                            x
-                                                        ).toLocaleString(
-                                                            "vi-VN"
-                                                        );
-
-                                                    },
-
-
-                                                // -------------------------
-                                                // Giá trị CO2
-                                                // -------------------------
-
-                                                label:
-                                                    function(
-                                                        context
-                                                    ) {
-
-                                                        const value =
-                                                            context.parsed.y;
-
-
-                                                        return (
-                                                            context.dataset.label +
-                                                            ": " +
-                                                            Math.round(
-                                                                value
-                                                            ) +
-                                                            " ppm"
-                                                        );
-
-                                                    }
-
-                                            }
-
-                                    }
-
-                            },
-
-
-                        // -----------------------------------------
-                        // Trục
-                        // -----------------------------------------
-
-                        scales:
-                            {
-
-                                // =============================
-                                // TRỤC THỜI GIAN
-                                // =============================
-
-                                x:
-                                    {
-
-                                        type:
-                                            "linear",
-
-                                        min:
-                                            minTime,
-
-                                        max:
-                                            maxTime,
-
-
-                                        title:
-                                            {
-
-                                                display:
-                                                    true,
-
-                                                text:
-                                                    "Thời gian"
-
-                                            },
-
-
-                                        ticks:
-                                            {
-
-                                                maxTicksLimit:
-                                                    10,
-
-                                                maxRotation:
-                                                    0,
-
-
-                                                callback:
-                                                    function(
-                                                        value
-                                                    ) {
-
-                                                        const date =
-                                                            new Date(
-                                                                Number(
-                                                                    value
-                                                                )
-                                                            );
-
-
-                                                        return date.toLocaleTimeString(
-                                                            "vi-VN",
-                                                            {
-
-                                                                hour:
-                                                                    "2-digit",
-
-                                                                minute:
-                                                                    "2-digit"
-
-                                                            }
-                                                        );
-
-                                                    }
-
-                                            }
-
-                                    },
-
-
-                                // =============================
-                                // TRỤC CO2
-                                // =============================
-
-                                y:
-                                    {
-
-                                        beginAtZero:
-                                            false,
-
-
-                                        title:
-                                            {
-
-                                                display:
-                                                    true,
-
-                                                text:
-                                                    "CO₂ (ppm)"
-
-                                            }
-
-                                    }
-
+                            label: function(context) {
+
+                                const value =
+                                    context.parsed.y;
+
+                                return (
+                                    context.dataset.label +
+                                    ": " +
+                                    Math.round(value) +
+                                    " ppm"
+                                );
                             }
+
+                        }
 
                     }
 
+                },
+
+
+                scales: {
+
+                    // =====================================
+                    // TRỤC THỜI GIAN
+                    // =====================================
+
+                    x: {
+
+                        type: "linear",
+
+                        min: minTime,
+
+                        max: maxTime,
+
+
+                        title: {
+
+                            display: true,
+
+                            text: "Thời gian"
+
+                        },
+
+
+                        ticks: {
+
+                            maxTicksLimit: 10,
+
+                            maxRotation: 0,
+
+                            callback: function(value) {
+
+                                const date =
+                                    new Date(
+                                        Number(value)
+                                    );
+
+                                return date
+                                    .toLocaleTimeString(
+                                        "vi-VN",
+                                        {
+                                            hour: "2-digit",
+                                            minute: "2-digit"
+                                        }
+                                    );
+                            }
+
+                        }
+
+                    },
+
+
+                    // =====================================
+                    // TRỤC CO2
+                    // =====================================
+
+                    y: {
+
+                        beginAtZero: false,
+
+
+                        title: {
+
+                            display: true,
+
+                            text: "CO₂ (ppm)"
+
+                        }
+
+                    }
+
+                }
+
             }
-        );
+
+        }
+    );
 
 
-    // ---------------------------------------------
-    // Kiểm tra kết quả
-    // ---------------------------------------------
+    // -------------------------------------------------
+    // Kiểm tra dữ liệu
+    // -------------------------------------------------
 
     console.log(
-        "Biểu đồ AI đã tạo:",
+        "✅ Biểu đồ AI đã cập nhật:",
         "AI =",
         cleanAI.length,
-        "điểm;",
+        "điểm |",
         "Thực tế =",
         cleanActual.length,
         "điểm"
@@ -2465,25 +2295,17 @@ function updateAIChart() {
 
 
     console.log(
-        "AI mẫu đầu:",
-        cleanAI.slice(
-            0,
-            3
-        )
+        "🔵 AI mẫu:",
+        cleanAI.slice(0, 3)
     );
 
 
     console.log(
-        "Thực tế mẫu đầu:",
-        cleanActual.slice(
-            0,
-            3
-        )
+        "🔴 Thực tế mẫu:",
+        cleanActual.slice(0, 3)
     );
 
 }
-
-
 // =====================================================
 // BIỂU ĐỒ CO2
 // =====================================================
