@@ -31,9 +31,18 @@ let currentTimeRange = "1h";
 
 let co2Chart = null;
 
+let aiCo2Chart = null;
+
 let pm25Chart = null;
 
 let peopleChart = null;
+
+
+// =====================================================
+// BIẾN LƯU LỊCH SỬ AI
+// =====================================================
+
+let aiHistoryData = [];
 
 
 // =====================================================
@@ -261,6 +270,84 @@ function parseVietnameseDate(value) {
 
 
     return date;
+
+}
+
+
+// =====================================================
+// CHUYỂN THỜI GIAN AI
+// =====================================================
+
+function parseAIHistoryDate(value) {
+
+    if (!value) {
+
+        return null;
+
+    }
+
+
+    // Nếu đã là Date
+
+    if (
+        value instanceof Date
+    ) {
+
+        if (
+            !isNaN(
+                value.getTime()
+            )
+        ) {
+
+            return value;
+
+        }
+
+    }
+
+
+    const text =
+        String(value)
+            .trim();
+
+
+    // Thử định dạng dd/MM/yyyy HH:mm:ss
+
+    const vietnameseDate =
+        parseVietnameseDate(
+            text
+        );
+
+
+    if (
+        vietnameseDate
+    ) {
+
+        return vietnameseDate;
+
+    }
+
+
+    // Thử định dạng ISO của Apps Script
+
+    const isoDate =
+        new Date(
+            text
+        );
+
+
+    if (
+        !isNaN(
+            isoDate.getTime()
+        )
+    ) {
+
+        return isoDate;
+
+    }
+
+
+    return null;
 
 }
 
@@ -566,6 +653,13 @@ async function loadData() {
         await loadAIRealtime();
 
 
+        // =============================================
+        // ĐỌC LỊCH SỬ AI
+        // =============================================
+
+        await loadAIHistory();
+
+
     } catch (error) {
 
         console.error(
@@ -652,6 +746,164 @@ async function loadAIRealtime() {
 
 
         updateAIUnavailable();
+
+    }
+
+}
+
+
+// =====================================================
+// ĐỌC TOÀN BỘ LỊCH SỬ AI
+// =====================================================
+
+async function loadAIHistory() {
+
+    try {
+
+        console.log(
+            "Đang tải lịch sử AI..."
+        );
+
+
+        const response =
+            await fetch(
+
+                SCRIPT_URL +
+                "?action=get_ai_realtime_history&t=" +
+                new Date().getTime()
+
+            );
+
+
+        if (!response.ok) {
+
+            throw new Error(
+                "Không thể tải lịch sử AI."
+            );
+
+        }
+
+
+        const result =
+            await response.json();
+
+
+        console.log(
+            "Lịch sử AI:",
+            result
+        );
+
+
+        if (
+            result.status !== "OK" ||
+            !Array.isArray(
+                result.data
+            )
+        ) {
+
+            aiHistoryData = [];
+
+            updateAIChart();
+
+            return;
+
+        }
+
+
+        aiHistoryData =
+            result.data
+                .map(
+
+                    function(item) {
+
+                        const time =
+                            parseAIHistoryDate(
+                                item.thoi_gian
+                            );
+
+
+                        const prediction =
+                            convertToNumber(
+                                item.co2_du_bao_10phut
+                            );
+
+
+                        if (
+                            !time
+                        ) {
+
+                            return null;
+
+                        }
+
+
+                        return {
+
+                            time:
+                                time,
+
+                            prediction:
+                                prediction
+
+                        };
+
+                    }
+
+                )
+                .filter(
+
+                    function(item) {
+
+                        return (
+                            item !== null &&
+                            !isNaN(
+                                item.time.getTime()
+                            )
+                        );
+
+                    }
+
+                );
+
+
+        aiHistoryData.sort(
+
+            function(a, b) {
+
+                return (
+                    a.time -
+                    b.time
+                );
+
+            }
+
+        );
+
+
+        console.log(
+            "Số mẫu AI:",
+            aiHistoryData.length
+        );
+
+
+        // =============================================
+        // CẬP NHẬT BIỂU ĐỒ AI
+        // =============================================
+
+        updateAIChart();
+
+
+    } catch (error) {
+
+        console.error(
+            "Lỗi đọc lịch sử AI:",
+            error
+        );
+
+
+        aiHistoryData = [];
+
+        updateAIChart();
 
     }
 
@@ -908,15 +1160,13 @@ function updateAIRealtime(ai) {
     if (aiTimeElement) {
 
         const aiDate =
-            new Date(
+            parseAIHistoryDate(
                 ai.thoi_gian
             );
 
 
         if (
-            !isNaN(
-                aiDate.getTime()
-            )
+            aiDate
         ) {
 
             aiTimeElement.innerText =
@@ -1319,6 +1569,114 @@ function getFilteredData() {
 
 
 // =====================================================
+// LẤY KHOẢNG THỜI GIAN HIỆN TẠI
+// =====================================================
+
+function getChartTimeWindow() {
+
+    if (
+        allData.length === 0
+    ) {
+
+        return null;
+
+    }
+
+
+    const latestTime =
+        allData[
+            allData.length - 1
+        ].time.getTime();
+
+
+    if (
+        currentTimeRange === "all"
+    ) {
+
+        return {
+
+            start:
+                allData[0].time.getTime(),
+
+            end:
+                latestTime
+
+        };
+
+    }
+
+
+    let milliseconds = 0;
+
+
+    if (
+        currentTimeRange === "1h"
+    ) {
+
+        milliseconds =
+            1 *
+            60 *
+            60 *
+            1000;
+
+    }
+
+
+    else if (
+        currentTimeRange === "6h"
+    ) {
+
+        milliseconds =
+            6 *
+            60 *
+            60 *
+            1000;
+
+    }
+
+
+    else if (
+        currentTimeRange === "24h"
+    ) {
+
+        milliseconds =
+            24 *
+            60 *
+            60 *
+            1000;
+
+    }
+
+
+    else if (
+        currentTimeRange === "7d"
+    ) {
+
+        milliseconds =
+            7 *
+            24 *
+            60 *
+            60 *
+            1000;
+
+    }
+
+
+    return {
+
+        start:
+            latestTime -
+            milliseconds,
+
+        end:
+            latestTime
+
+    };
+
+}
+
+
+// =====================================================
 // THAY ĐỔI KHOẢNG THỜI GIAN
 // =====================================================
 
@@ -1360,6 +1718,9 @@ function changeTimeRange(
 
 
     updateCharts();
+
+
+    updateAIChart();
 
 }
 
@@ -1427,7 +1788,7 @@ function formatChartTime(
 
 
 // =====================================================
-// CẬP NHẬT BIỂU ĐỒ
+// CẬP NHẬT CÁC BIỂU ĐỒ CŨ
 // =====================================================
 
 function updateCharts() {
@@ -1664,6 +2025,596 @@ function createCo2Chart(
             }
 
         );
+
+}
+
+
+// =====================================================
+// BIỂU ĐỒ AI + CO2 THỰC TẾ
+//
+// AI:
+//     tại thời điểm t
+//
+// Thực tế:
+//     tại thời điểm t + 10 phút
+//
+// Ví dụ:
+//
+//     10:00 AI dự báo 1500 ppm
+//     10:10 cảm biến thực tế 1450 ppm
+//
+// Trên biểu đồ:
+//     AI nằm tại 10:00
+//     Thực tế nằm tại 10:10
+//
+// => AI đi trước thực tế 10 phút.
+// =====================================================
+
+function updateAIChart() {
+
+    const canvas =
+        document.getElementById(
+            "aiCo2Chart"
+        );
+
+
+    if (!canvas) {
+
+        return;
+
+    }
+
+
+    // =============================================
+    // Nếu chưa có DATA hoặc AI
+    // =============================================
+
+    if (
+
+        allData.length === 0 ||
+        aiHistoryData.length === 0
+
+    ) {
+
+        if (aiCo2Chart) {
+
+            aiCo2Chart.destroy();
+
+            aiCo2Chart = null;
+
+        }
+
+        return;
+
+    }
+
+
+    const window =
+        getChartTimeWindow();
+
+
+    if (!window) {
+
+        return;
+
+    }
+
+
+    const startTime =
+        window.start;
+
+
+    const endTime =
+        window.end;
+
+
+    // =============================================
+    // AI DATASET
+    //
+    // Điểm AI nằm tại thời điểm dự báo t
+    // =============================================
+
+    const aiPoints =
+        aiHistoryData
+
+            .filter(
+
+                function(item) {
+
+                    return (
+
+                        item.time.getTime() >=
+                        startTime &&
+
+                        item.time.getTime() <=
+                        endTime
+
+                    );
+
+                }
+
+            )
+
+            .map(
+
+                function(item) {
+
+                    return {
+
+                        x:
+                            item.time,
+
+                        y:
+                            item.prediction
+
+                    };
+
+                }
+
+            );
+
+
+    // =============================================
+    // THỰC TẾ DATASET
+    //
+    // Mỗi dự báo tại t có thời điểm đích:
+    //
+    //     t + 10 phút
+    //
+    // Tìm CO2 thực tế gần thời điểm đó.
+    // =============================================
+
+    const actualPoints = [];
+
+
+    aiHistoryData.forEach(
+
+        function(aiItem) {
+
+            const predictionTime =
+                aiItem.time.getTime();
+
+
+            const targetTime =
+                predictionTime +
+                10 *
+                60 *
+                1000;
+
+
+            // Chỉ lấy các điểm thực tế
+            // trong cửa sổ biểu đồ
+
+            if (
+
+                targetTime <
+                startTime ||
+
+                targetTime >
+                endTime
+
+            ) {
+
+                return;
+
+            }
+
+
+            // =====================================
+            // Tìm mẫu DATA gần t + 10 phút
+            // =====================================
+
+            let nearest =
+                null;
+
+            let smallestDifference =
+                Infinity;
+
+
+            for (
+                let i = 0;
+                i < allData.length;
+                i++
+            ) {
+
+                const actualTime =
+                    allData[i].time.getTime();
+
+
+                const difference =
+                    Math.abs(
+
+                        actualTime -
+                        targetTime
+
+                    );
+
+
+                if (
+                    difference <
+                    smallestDifference
+                ) {
+
+                    smallestDifference =
+                        difference;
+
+                    nearest =
+                        allData[i];
+
+                }
+
+
+                // Vì dữ liệu đã sắp xếp,
+                // có thể dừng khi vượt quá target
+
+                if (
+                    actualTime >
+                    targetTime &&
+                    difference >
+                    smallestDifference
+                ) {
+
+                    break;
+
+                }
+
+            }
+
+
+            // =====================================
+            // Chỉ ghép nếu sai lệch <= 2 phút
+            // =====================================
+
+            if (
+
+                nearest &&
+
+                smallestDifference <=
+                2 *
+                60 *
+                1000
+
+            ) {
+
+                actualPoints.push({
+
+                    x:
+                        nearest.time,
+
+                    y:
+                        nearest.co2
+
+                });
+
+            }
+
+        }
+
+    );
+
+
+    // =============================================
+    // SẮP XẾP
+    // =============================================
+
+    aiPoints.sort(
+
+        function(a, b) {
+
+            return (
+                a.x -
+                b.x
+            );
+
+        }
+
+    );
+
+
+    actualPoints.sort(
+
+        function(a, b) {
+
+            return (
+                a.x -
+                b.x
+            );
+
+        }
+
+    );
+
+
+    // =============================================
+    // XÓA BIỂU ĐỒ CŨ
+    // =============================================
+
+    if (aiCo2Chart) {
+
+        aiCo2Chart.destroy();
+
+    }
+
+
+    // =============================================
+    // TẠO BIỂU ĐỒ
+    // =============================================
+
+    const context =
+        canvas.getContext(
+            "2d"
+        );
+
+
+    aiCo2Chart =
+        new Chart(
+
+            context,
+
+            {
+
+                type:
+                    "line",
+
+                data: {
+
+                    datasets: [
+
+                        // =================================
+                        // AI
+                        // =================================
+
+                        {
+
+                            label:
+                                "🔵 CO₂ AI dự đoán",
+
+                            data:
+                                aiPoints,
+
+                            parsing:
+                                false,
+
+                            borderColor:
+                                "#2196F3",
+
+                            backgroundColor:
+                                "#2196F3",
+
+                            borderWidth:
+                                2,
+
+                            tension:
+                                0.25,
+
+                            pointRadius:
+                                1.5,
+
+                            pointHoverRadius:
+                                5,
+
+                            fill:
+                                false,
+
+                            spanGaps:
+                                true
+
+                        },
+
+
+                        // =================================
+                        // THỰC TẾ
+                        // =================================
+
+                        {
+
+                            label:
+                                "🔴 CO₂ thực tế",
+
+                            data:
+                                actualPoints,
+
+                            parsing:
+                                false,
+
+                            borderColor:
+                                "#F44336",
+
+                            backgroundColor:
+                                "#F44336",
+
+                            borderWidth:
+                                2,
+
+                            tension:
+                                0.25,
+
+                            pointRadius:
+                                1.5,
+
+                            pointHoverRadius:
+                                5,
+
+                            fill:
+                                false,
+
+                            spanGaps:
+                                true
+
+                        }
+
+                    ]
+
+                },
+
+                options: {
+
+                    responsive:
+                        true,
+
+                    maintainAspectRatio:
+                        true,
+
+                    interaction: {
+
+                        mode:
+                            "nearest",
+
+                        intersect:
+                            false
+
+                    },
+
+                    plugins: {
+
+                        legend: {
+
+                            display:
+                                true
+
+                        },
+
+                        tooltip: {
+
+                            callbacks: {
+
+                                title:
+                                    function(
+                                        tooltipItems
+                                    ) {
+
+                                        if (
+                                            !tooltipItems ||
+                                            tooltipItems.length === 0
+                                        ) {
+
+                                            return "";
+
+                                        }
+
+
+                                        const value =
+                                            tooltipItems[0]
+                                                .parsed
+                                                .x;
+
+
+                                        const date =
+                                            new Date(
+                                                value
+                                            );
+
+
+                                        return date
+                                            .toLocaleString(
+                                                "vi-VN"
+                                            );
+
+                                    },
+
+                                label:
+                                    function(
+                                        context
+                                    ) {
+
+                                        return (
+
+                                            context.dataset.label +
+                                            ": " +
+                                            Math.round(
+                                                context.parsed.y
+                                            ) +
+                                            " ppm"
+
+                                        );
+
+                                    }
+
+                            }
+
+                        }
+
+                    },
+
+                    scales: {
+
+                        x: {
+
+                            type:
+                                "linear",
+
+                            title: {
+
+                                display:
+                                    true,
+
+                                text:
+                                    "Thời gian"
+
+                            },
+
+                            ticks: {
+
+                                maxTicksLimit:
+                                    10,
+
+                                maxRotation:
+                                    0,
+
+                                callback:
+                                    function(
+                                        value
+                                    ) {
+
+                                        const date =
+                                            new Date(
+                                                value
+                                            );
+
+
+                                        return formatChartTime(
+                                            date
+                                        );
+
+                                    }
+
+                            }
+
+                        },
+
+                        y: {
+
+                            title: {
+
+                                display:
+                                    true,
+
+                                text:
+                                    "CO₂ (ppm)"
+
+                            },
+
+                            beginAtZero:
+                                false
+
+                        }
+
+                    }
+
+                }
+
+            }
+
+        );
+
+
+    console.log(
+        "Biểu đồ AI:",
+        aiPoints.length,
+        "điểm dự đoán;",
+        actualPoints.length,
+        "điểm thực tế"
+    );
 
 }
 
