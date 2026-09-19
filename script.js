@@ -3059,6 +3059,10 @@ function updateAIChart() {
 
                                             display:
                                                 true,
+
+                                            position:
+                                                "top"
+
                                         },
 
 
